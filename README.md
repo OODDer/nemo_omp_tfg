@@ -1,6 +1,14 @@
 # oduran NEMO omp tests
 
 This project will be used to have a version controll on the different tests that I execute while doing research for my TFG.
+For now it contains only the files I modify in order to make the repository light and fast to work with.
+
+## Running tests with it
+You should be able to paste the files in a directory along with your working NEMO 4.2 files to compile and run it normally.
+
+
+## From here on is just the default README from Gitlab
+
 
 ## Getting started
 
