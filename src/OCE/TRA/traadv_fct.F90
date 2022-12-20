@@ -485,8 +485,8 @@ CONTAINS
             !$OMP END SINGLE
          ENDIF
          !
-	   !$OMP END PARALLEL
       END DO                     ! end of tracer loop
+	   !$OMP END PARALLEL
       CALL SYSTEM_CLOCK(pend,crate,cmax)
       !
       IF ( ll_zAimp ) THEN
