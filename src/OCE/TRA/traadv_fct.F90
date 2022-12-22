@@ -92,7 +92,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
       INTEGER, DIMENSION(1:3) :: myshape
-      INTEGER(8) :: cstart,cend,pstart,pend, crate, cmax
+      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2, crate, cmax
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
       !!----------------------------------------------------------------------
       !
@@ -278,8 +278,11 @@ CONTAINS
             END DO
             !CALL extrae_event(30,0)
 	    !$OMP SINGLE
+         CALL SYSTEM_CLOCK(ss1,crate,cmax)
             ! NOTE [ comm_cleanup ] : need to change sign to ensure halo 1 - halo 2 compatibility
             CALL lbc_lnk( 'traadv_fct', zltu, 'T', -1.0_wp , zltv, 'T', -1.0_wp, ld4only= .TRUE. )   ! Lateral boundary cond. (unchanged sgn)
+            CALL SYSTEM_CLOCK(se1,crate,cmax)
+            
             !
 	    !$OMP END SINGLE
             !CALL extrae_event(30,1)
@@ -368,11 +371,14 @@ CONTAINS
          !
          !CALL extrae_event(30,0)
 	 !$OMP SINGLE
+         CALL SYSTEM_CLOCK(ss2,crate,cmax)
+
          IF (nn_hls==1) THEN
             CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp, zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp, zwz, 'T', 1.0_wp )
          ELSE
             CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp)
          END IF
+         CALL SYSTEM_CLOCK(se2,crate,cmax)
 	 !$OMP END SINGLE
          !CALL extrae_event(30,1)
          !
@@ -500,7 +506,7 @@ CONTAINS
       ENDIF
       !
       CALL SYSTEM_CLOCK(cend,crate,cmax)
-      WRITE ( *, * ) 'Total time = ', real ( cend - cstart ) / real ( crate ), ' parallel = ', real ( pend - pstart ) / real ( crate )
+      WRITE ( *, * ) 'T= ', real ( cend - cstart ) / real ( crate ), ' p= ', real ( pend - pstart ) / real ( crate ), 's= ',real ( se1 - ss1 ) / real ( crate ) + real ( se2 - ss2 ) / real ( crate )
 #endif
    END SUBROUTINE tra_adv_fct
 
