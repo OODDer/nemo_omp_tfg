@@ -506,7 +506,7 @@ CONTAINS
       ENDIF
       !
       CALL SYSTEM_CLOCK(cend,crate,cmax)
-      WRITE ( *, (A,F1.6,A,F1.6,A,F1.6) ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ',(real ( se1 - ss1 ) / real ( crate )) + (real ( se2 - ss2 ) / real ( crate ))
+      WRITE ( *, '(A,F1.6,A,F1.6,A,F1.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ',(real ( se1 - ss1 ) / real ( crate )) + (real ( se2 - ss2 ) / real ( crate ))
 #endif
    END SUBROUTINE tra_adv_fct
 
