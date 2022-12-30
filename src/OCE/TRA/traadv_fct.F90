@@ -92,10 +92,11 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
       INTEGER, DIMENSION(1:3) :: myshape
-      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2, crate, cmax
+      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
       !!----------------------------------------------------------------------
       !
+      ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0
       CALL SYSTEM_CLOCK(cstart,crate,cmax)
       !
 #if defined key_loop_fusion
@@ -164,7 +165,7 @@ CONTAINS
          !
          !        !==  upstream advection with initial mass fluxes & intermediate update  ==!
          !                    !* upstream tracer flux in the i and j direction
-         !CALL extrae_event(30,1)
+         !extrae_event(30,1)
 	      !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj) SCHEDULE(RUNTIME) COLLAPSE(3)
          DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )
             ! upstream scheme
@@ -215,12 +216,12 @@ CONTAINS
 	      !$OMP END DO
 
          IF ( ll_zAimp ) THEN
-            !CALL extrae_event(30,0)
+            !extrae_event(30,0)
 	         !$OMP SINGLE
             CALL tridia_solver( zwdia, zwsup, zwinf, zwi, zwi , 0 )
             !
             ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp ;
-            !CALL extrae_event(30,1)
+            !extrae_event(30,1)
 	         !$OMP END SINGLE
 	         !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
@@ -261,7 +262,7 @@ CONTAINS
          CASE(  4  )                   !- 4th order centered
             zltu(:,:,jpk) = 0._wp            ! Bottom value : flux set to zero
             zltv(:,:,jpk) = 0._wp
-	    !RACE CONDITIONS ?
+	         !RACE CONDITIONS ?
             DO jk = 1, jpkm1                 ! Laplacian
                !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2)
                DO_2D( 1, 0, 1, 0 )                 ! 1st derivative (gradient)
@@ -276,17 +277,17 @@ CONTAINS
                END_2D
                !$OMP END DO
             END DO
-            !CALL extrae_event(30,0)
-	    !$OMP SINGLE
-         CALL SYSTEM_CLOCK(ss1,crate,cmax)
+            !extrae_event(30,0)
+	         !$OMP SINGLE
+            CALL SYSTEM_CLOCK(ss1,crate,cmax)
             ! NOTE [ comm_cleanup ] : need to change sign to ensure halo 1 - halo 2 compatibility
             CALL lbc_lnk( 'traadv_fct', zltu, 'T', -1.0_wp , zltv, 'T', -1.0_wp, ld4only= .TRUE. )   ! Lateral boundary cond. (unchanged sgn)
             CALL SYSTEM_CLOCK(se1,crate,cmax)
             
             !
-	    !$OMP END SINGLE
-            !CALL extrae_event(30,1)
-	    !$OMP DO PRIVATE(zC2t_u, zC2t_v) SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !$OMP END SINGLE
+            !extrae_event(30,1)
+	         !$OMP DO PRIVATE(zC2t_u, zC2t_v) SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 ) 
                zC2t_u = pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj  ,jk,jn,Kmm)   ! 2 x C2 interpolation of T at u- & v-points
                zC2t_v = pt(ji,jj,jk,jn,Kmm) + pt(ji  ,jj+1,jk,jn,Kmm)
@@ -300,27 +301,27 @@ CONTAINS
                              &                                     )                                     & ! bracket for halo 1 - halo 2 compatibility
                              &                          ) - zwy(ji,jj,jk)
             END_3D
-	    !$OMP END DO
+	         !$OMP END DO
             !
          CASE(  41 )                   !- 4th order centered       ==>>   !!gm coding attempt   need to be tested
             ztu(:,:,jpk) = 0._wp             ! Bottom value : flux set to zero
             ztv(:,:,jpk) = 0._wp
-	    !RACES^^vv
-	    !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !RACES^^vv
+	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )    ! 1st derivative (gradient)
                ztu(ji,jj,jk) = ( pt(ji+1,jj  ,jk,jn,Kmm) - pt(ji,jj,jk,jn,Kmm) ) * umask(ji,jj,jk)
                ztv(ji,jj,jk) = ( pt(ji  ,jj+1,jk,jn,Kmm) - pt(ji,jj,jk,jn,Kmm) ) * vmask(ji,jj,jk)
             END_3D
-	    !$OMP END DO
-            !CALL extrae_event(30,0)
+	         !$OMP END DO
+            !extrae_event(30,0)
             IF (nn_hls==1) THEN
                !$OMP SINGLE
                CALL lbc_lnk( 'traadv_fct', ztu, 'U', -1.0_wp , ztv, 'V', -1.0_wp, ld4only= .TRUE. )   ! Lateral boundary cond. (unchanged sgn)
                !$OMP END SINGLE
             ENDIF
             !
-            !CALL extrae_event(30,1)
-	    !$OMP DO PRIVATE(zC2t_u, zC2t_v, zC4t_u, zC4t_v) SCHEDULE(RUNTIME) COLLAPSE(3)
+            !extrae_event(30,1)
+	         !$OMP DO PRIVATE(zC2t_u, zC2t_v, zC4t_u, zC4t_v) SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )    ! Horizontal advective fluxes
                zC2t_u = pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj  ,jk,jn,Kmm)   ! 2 x C2 interpolation of T at u- & v-points (x2)
                zC2t_v = pt(ji,jj,jk,jn,Kmm) + pt(ji  ,jj+1,jk,jn,Kmm) 
@@ -331,46 +332,46 @@ CONTAINS
                zwx(ji,jj,jk) =  0.5_wp * pU(ji,jj,jk) * zC4t_u - zwx(ji,jj,jk)
                zwy(ji,jj,jk) =  0.5_wp * pV(ji,jj,jk) * zC4t_v - zwy(ji,jj,jk)
             END_3D
-	    !$OMP END DO
-            !CALL extrae_event(30,0)
+	         !$OMP END DO
+            !extrae_event(30,0)
             IF (nn_hls==2) THEN
                !$OMP SINGLE
                CALL lbc_lnk( 'traadv_fct', zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp )   ! Lateral boundary cond. (unchanged sgn)
                !$OMP END SINGLE
             ENDIF
             !
-            !CALL extrae_event(30,1)
+            !extrae_event(30,1)
          END SELECT
          !
          SELECT CASE( kn_fct_v )    !* vertical anti-diffusive fluxes (w-masked interior values)
          !
          CASE(  2  )                   !- 2nd order centered
-	    !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )
                zwz(ji,jj,jk) =  (  pW(ji,jj,jk) * 0.5_wp * ( pt(ji,jj,jk,jn,Kmm) + pt(ji,jj,jk-1,jn,Kmm) )   &
                   &              - zwz(ji,jj,jk)  ) * wmask(ji,jj,jk)
             END_3D
-	    !$OMP END DO
+	         !$OMP END DO
             !
          CASE(  4  )                   !- 4th order COMPACT
-            !CALL extrae_event(30,0)
-	    !$OMP SINGLE
+            !extrae_event(30,0)
+	         !$OMP SINGLE
             CALL interp_4th_cpt( pt(:,:,:,jn,Kmm) , ztw )   ! zwt = COMPACT interpolation of T at w-point
-            !CALL extrae_event(30,1)
-	    !$OMP END SINGLE
-	    !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+            !extrae_event(30,1)
+	         !$OMP END SINGLE
+	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )
                zwz(ji,jj,jk) = ( pW(ji,jj,jk) * ztw(ji,jj,jk) - zwz(ji,jj,jk) ) * wmask(ji,jj,jk)
             END_3D
-	    !$OMP END DO
+	         !$OMP END DO
             !
          END SELECT
          IF( ln_linssh ) THEN    ! top ocean value: high order = upstream  ==>>  zwz=0
             zwz(:,:,1) = 0._wp   ! only ocean surface as interior zwz values have been w-masked
          ENDIF
          !
-         !CALL extrae_event(30,0)
-	 !$OMP SINGLE
+         !extrae_event(30,0)
+	      !$OMP SINGLE
          CALL SYSTEM_CLOCK(ss2,crate,cmax)
 
          IF (nn_hls==1) THEN
@@ -379,11 +380,11 @@ CONTAINS
             CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp)
          END IF
          CALL SYSTEM_CLOCK(se2,crate,cmax)
-	 !$OMP END SINGLE
-         !CALL extrae_event(30,1)
+	      !$OMP END SINGLE
+         !extrae_event(30,1)
          !
          IF ( ll_zAimp ) THEN
-	    !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )    !* trend and after field with monotonic scheme
                !                                                ! total intermediate advective trends
                ztra = - (  zwx(ji,jj,jk) - zwx(ji-1,jj  ,jk  )   &
@@ -391,34 +392,37 @@ CONTAINS
                   &      + zwz(ji,jj,jk) - zwz(ji  ,jj  ,jk+1) ) * r1_e1e2t(ji,jj) 
                ztw(ji,jj,jk) = zwi(ji,jj,jk) + p2dt * ztra / e3t(ji,jj,jk,Krhs) * tmask(ji,jj,jk)
             END_3D
-	    !$OMP END DO
+	         !$OMP END DO
             !
-            !CALL extrae_event(30,0)
-	    !$OMP SINGLE
+            !extrae_event(30,0)
+	         !$OMP SINGLE
             CALL tridia_solver( zwdia, zwsup, zwinf, ztw, ztw , 0 )
-	    !$OMP END SINGLE
+	         !$OMP END SINGLE
             !
-            !CALL extrae_event(30,1)
-	    !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
+            !extrae_event(30,1)
+	         !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
                zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) ) 
                zfm_wk = wi(ji,jj,jk) - ABS( wi(ji,jj,jk) ) 
                zwz(ji,jj,jk) = zwz(ji,jj,jk) + 0.5 * e1e2t(ji,jj) * ( zfp_wk * ztw(ji,jj,jk) + zfm_wk * ztw(ji,jj,jk-1) ) * wmask(ji,jj,jk)
             END_3D
-	    !$OMP END DO
+	         !$OMP END DO
          END IF
          !
          !        !==  monotonicity algorithm  ==!
          !
-         !CALL extrae_event(30,0)
-	 !$OMP SINGLE
+         !extrae_event(30,0)
+	      !$OMP SINGLE
+         !HEREE
+         CALL SYSTEM_CLOCK(ss3,crate,cmax)
          CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt )
-         !CALL extrae_event(30,1)
-	 !$OMP END SINGLE
+         CALL SYSTEM_CLOCK(se3,crate,cmax)
+         !extrae_event(30,1)
+	      !$OMP END SINGLE
          !
          !        !==  final trend with corrected fluxes  ==!
          !
-	 !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
             ztra = - (  zwx(ji,jj,jk) - zwx(ji-1,jj  ,jk  )   &
                &      + zwy(ji,jj,jk) - zwy(ji  ,jj-1,jk  )   &
@@ -426,30 +430,30 @@ CONTAINS
             pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) + ztra / e3t(ji,jj,jk,Kmm)
             zwi(ji,jj,jk) = zwi(ji,jj,jk) + p2dt * ztra / e3t(ji,jj,jk,Krhs) * tmask(ji,jj,jk)
          END_3D
-	 !$OMP END DO
+	      !$OMP END DO
          !
          IF ( ll_zAimp ) THEN
             !
             ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp
-	    !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( 0, 0, 0, 0, 2, jpkm1 )      ! Interior value ( multiplied by wmask)
                zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) ) 
                zfm_wk = wi(ji,jj,jk) - ABS( wi(ji,jj,jk) ) 
                ztw(ji,jj,jk) = - 0.5 * e1e2t(ji,jj) * ( zfp_wk * zwi(ji,jj,jk) + zfm_wk * zwi(ji,jj,jk-1) ) * wmask(ji,jj,jk)
                zwz(ji,jj,jk) = zwz(ji,jj,jk) + ztw(ji,jj,jk) ! Update vertical fluxes for trend diagnostic
             END_3D
-	    !$OMP END DO
-	    !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !$OMP END DO
+	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztw(ji,jj,jk) - ztw(ji  ,jj  ,jk+1) ) &
                   &                                        * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
             END_3D
-	    !$OMP END DO
+	         !$OMP END DO
          END IF
-	 !maybe change this sums into loops
+	      !maybe change this sums into loops
          IF( l_trd .OR. l_hst ) THEN   ! trend diagnostics // heat/salt transport
             myshape = SHAPE(ztrdx)
-	    !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
             DO iii = 1, myshape(1)
                DO jjj = 1,myshape(2)
                   DO zzz = 1, myshape(3)
@@ -459,10 +463,10 @@ CONTAINS
                   END DO
                END DO
             END DO
-	    !$OMP END DO 
+	         !$OMP END DO 
             !
-            !CALL extrae_event(30,0)
-	    !$OMP SINGLE
+            !extrae_event(30,0)
+	         !$OMP SINGLE
             IF( l_trd ) THEN              ! trend diagnostics
                CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_xad, ztrdx, pU, pt(:,:,:,jn,Kmm) )
                CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_yad, ztrdy, pV, pt(:,:,:,jn,Kmm) )
@@ -471,12 +475,12 @@ CONTAINS
             !                             ! heat/salt transport
             IF( l_hst )   CALL dia_ar5_hst( jn, 'adv', ztrdx(:,:,:), ztrdy(:,:,:) )
             !
-	    !$OMP END SINGLE
+	         !$OMP END SINGLE
          ENDIF
          IF( l_ptr ) THEN              ! "Poleward" transports
-            !CALL extrae_event(30,1)
-	      myshape = SHAPE(zptry)
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3) 
+            !extrae_event(30,1)
+	         myshape = SHAPE(zptry)
+	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3) 
             DO iii = 1, myshape(1)
                DO jjj = 1,myshape(2)
                   DO zzz = 1, myshape(3)
@@ -484,8 +488,8 @@ CONTAINS
                   END DO
                END DO
             END DO
-	    !$OMP END DO
-            !CALL extrae_event(30,0)
+	         !$OMP END DO
+            !extrae_event(30,0)
             !$OMP SINGLE
             CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:) )
             !$OMP END SINGLE
@@ -506,7 +510,7 @@ CONTAINS
       ENDIF
       !
       CALL SYSTEM_CLOCK(cend,crate,cmax)
-      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ',(real ( se1 - ss1 ) / real ( crate )) + (real ( se2 - ss2 ) / real ( crate ))
+      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ',(real ( se1 - ss1 ) / real ( crate )) + (real ( se2 - ss2 ) / real ( crate )) + (real ( se3 - ss3 ) / real ( crate ))
 #endif
    END SUBROUTINE tra_adv_fct
 
