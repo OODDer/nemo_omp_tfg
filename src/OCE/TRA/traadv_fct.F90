@@ -282,7 +282,7 @@ CONTAINS
 	         !OMP SINGLE
             CALL SYSTEM_CLOCK(ss1,crate,cmax)
             ! NOTE [ comm_cleanup ] : need to change sign to ensure halo 1 - halo 2 compatibility
-            CALL lbc_lnk( 'traadv_fct', zltu, 'T', -1.0_wp , zltv, 'T', -1.0_wp, ld4only= .TRUE. )   ! Lateral boundary cond. (unchanged sgn)
+            CALL lbc_lnk( 'traadv_fct', zltu, 'T', -1.0_wp , zltv, 'T', -1.0_wp, ld4only= .TRUE., pTag=jn )   ! Lateral boundary cond. (unchanged sgn)
             CALL SYSTEM_CLOCK(se1,crate,cmax)
             
             !
@@ -317,7 +317,7 @@ CONTAINS
             !extrae_event(30,0)
             IF (nn_hls==1) THEN
                !OMP SINGLE
-               CALL lbc_lnk( 'traadv_fct', ztu, 'U', -1.0_wp , ztv, 'V', -1.0_wp, ld4only= .TRUE. )   ! Lateral boundary cond. (unchanged sgn)
+               CALL lbc_lnk( 'traadv_fct', ztu, 'U', -1.0_wp , ztv, 'V', -1.0_wp, ld4only= .TRUE., pTag=jn )   ! Lateral boundary cond. (unchanged sgn)
                !OMP END SINGLE
             ENDIF
             !
@@ -337,7 +337,7 @@ CONTAINS
             !extrae_event(30,0)
             IF (nn_hls==2) THEN
                !OMP SINGLE
-               CALL lbc_lnk( 'traadv_fct', zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp )   ! Lateral boundary cond. (unchanged sgn)
+               CALL lbc_lnk( 'traadv_fct', zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp, pTag=jn )   ! Lateral boundary cond. (unchanged sgn)
                !OMP END SINGLE
             ENDIF
             !
@@ -376,9 +376,9 @@ CONTAINS
          CALL SYSTEM_CLOCK(ss2,crate,cmax)
 
          IF (nn_hls==1) THEN
-            CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp, zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp, zwz, 'T', 1.0_wp )
+            CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp, zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp, zwz, 'T', 1.0_wp, pTag=jn )
          ELSE
-            CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp)
+            CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp, pTag=jn)
          END IF
          CALL SYSTEM_CLOCK(se2,crate,cmax)
 	      !OMP END SINGLE
@@ -516,7 +516,7 @@ CONTAINS
    END SUBROUTINE tra_adv_fct
 
 
-   SUBROUTINE nonosc( Kmm, pbef, paa, pbb, pcc, paft, p2dt, jn )
+   SUBROUTINE nonosc( Kmm, pbef, paa, pbb, pcc, paft, p2dt, fTag )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE nonosc  ***
       !!
@@ -534,7 +534,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(in   ) ::   pbef            ! before field
       REAL(wp), DIMENSION(A2D(nn_hls)    ,jpk), INTENT(in   ) ::   paft            ! after field
       REAL(wp), DIMENSION(A2D(nn_hls)    ,jpk), INTENT(inout) ::   paa, pbb, pcc   ! monotonic fluxes in the 3 directions
-      INTEGER, OPTIONAL ::    jn !optional for parallelizing communications
+      INTEGER, OPTIONAL ::    fTag !optional for parallelizing communications
       !
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
       INTEGER  ::   ikm1         ! local integer
@@ -590,10 +590,10 @@ CONTAINS
          END_2D
       END DO
       IF (nn_hls==1) THEN
-         IF(present(jn)) THEN
-            CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE. )   ! lateral boundary cond. (unchanged sign)
+         IF(present(fTag)) THEN
+            CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE., pTag=fTag)   ! lateral boundary cond. (unchanged sign)
          ELSE  
-            CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE. )   ! lateral boundary cond. (unchanged sign)
+            CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE.)   ! lateral boundary cond. (unchanged sign)
          ENDIF
       ENDIF
       ! 3. monotonic flux in the i & j direction (paa & pbb)
