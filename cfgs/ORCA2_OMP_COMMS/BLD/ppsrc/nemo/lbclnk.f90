@@ -107,7 +107,7 @@ CONTAINS
       &                   , pt21, cdna21, psgn21, pt22, cdna22, psgn22, pt23, cdna23, psgn23, pt24, cdna24, psgn24  &
       &                   , pt25, cdna25, psgn25, pt26, cdna26, psgn26, pt27, cdna27, psgn27, pt28, cdna28, psgn28  &
       &                   , pt29, cdna29, psgn29, pt30, cdna30, psgn30                                              &
-      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       !!---------------------------------------------------------------------
       CHARACTER(len=*)     ,                   INTENT(in   ) ::   cdname  ! name of the calling subroutine
       REAL(sp), DIMENSION(:,:)          , TARGET, CONTIGUOUS, INTENT(inout) ::   pt1        ! arrays on which the lbc is applied
@@ -133,6 +133,7 @@ CONTAINS
       INTEGER              , OPTIONAL        , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8), OPTIONAL        , INTENT(in   ) ::   lsend, lrecv   ! indicate how communications are to be carried out
       LOGICAL              , OPTIONAL        , INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !!
       INTEGER                          ::   kfld        ! number of elements that will be attributed
       TYPE(PTR_4d_sp), DIMENSION(30) ::   ptab_ptr    ! pointer array
@@ -177,7 +178,11 @@ CONTAINS
       IF( PRESENT(psgn30) )   CALL load_ptr_2d_sp( pt30, cdna30, psgn30, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       !     
       IF( nn_comm == 1 ) THEN 
-         CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         IF (present(pTag)) THEN
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
+         ELSE
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         ENDIF
       ELSE
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
       ENDIF
@@ -214,7 +219,7 @@ CONTAINS
       &                   , pt21, cdna21, psgn21, pt22, cdna22, psgn22, pt23, cdna23, psgn23, pt24, cdna24, psgn24  &
       &                   , pt25, cdna25, psgn25, pt26, cdna26, psgn26, pt27, cdna27, psgn27, pt28, cdna28, psgn28  &
       &                   , pt29, cdna29, psgn29, pt30, cdna30, psgn30                                              &
-      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       !!---------------------------------------------------------------------
       CHARACTER(len=*)     ,                   INTENT(in   ) ::   cdname  ! name of the calling subroutine
       REAL(sp), DIMENSION(:,:,:)          , TARGET, CONTIGUOUS, INTENT(inout) ::   pt1        ! arrays on which the lbc is applied
@@ -240,6 +245,7 @@ CONTAINS
       INTEGER              , OPTIONAL        , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8), OPTIONAL        , INTENT(in   ) ::   lsend, lrecv   ! indicate how communications are to be carried out
       LOGICAL              , OPTIONAL        , INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !!
       INTEGER                          ::   kfld        ! number of elements that will be attributed
       TYPE(PTR_4d_sp), DIMENSION(30) ::   ptab_ptr    ! pointer array
@@ -284,8 +290,12 @@ CONTAINS
       IF( PRESENT(psgn30) )   CALL load_ptr_3d_sp( pt30, cdna30, psgn30, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       !     
       IF( nn_comm == 1 ) THEN 
-         CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
-      ELSE
+         IF (present(pTag)) THEN
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
+         ELSE
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         ENDIF
+            ELSE
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
       ENDIF
       !
@@ -321,7 +331,7 @@ CONTAINS
       &                   , pt21, cdna21, psgn21, pt22, cdna22, psgn22, pt23, cdna23, psgn23, pt24, cdna24, psgn24  &
       &                   , pt25, cdna25, psgn25, pt26, cdna26, psgn26, pt27, cdna27, psgn27, pt28, cdna28, psgn28  &
       &                   , pt29, cdna29, psgn29, pt30, cdna30, psgn30                                              &
-      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       !!---------------------------------------------------------------------
       CHARACTER(len=*)     ,                   INTENT(in   ) ::   cdname  ! name of the calling subroutine
       REAL(sp), DIMENSION(:,:,:,:)          , TARGET, CONTIGUOUS, INTENT(inout) ::   pt1        ! arrays on which the lbc is applied
@@ -347,6 +357,7 @@ CONTAINS
       INTEGER              , OPTIONAL        , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8), OPTIONAL        , INTENT(in   ) ::   lsend, lrecv   ! indicate how communications are to be carried out
       LOGICAL              , OPTIONAL        , INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !!
       INTEGER                          ::   kfld        ! number of elements that will be attributed
       TYPE(PTR_4d_sp), DIMENSION(30) ::   ptab_ptr    ! pointer array
@@ -391,8 +402,12 @@ CONTAINS
       IF( PRESENT(psgn30) )   CALL load_ptr_4d_sp( pt30, cdna30, psgn30, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       !     
       IF( nn_comm == 1 ) THEN 
-         CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
-      ELSE
+         IF (present(pTag)) THEN
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
+         ELSE
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         ENDIF
+            ELSE
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
       ENDIF
       !
@@ -431,7 +446,7 @@ CONTAINS
       &                   , pt21, cdna21, psgn21, pt22, cdna22, psgn22, pt23, cdna23, psgn23, pt24, cdna24, psgn24  &
       &                   , pt25, cdna25, psgn25, pt26, cdna26, psgn26, pt27, cdna27, psgn27, pt28, cdna28, psgn28  &
       &                   , pt29, cdna29, psgn29, pt30, cdna30, psgn30                                              &
-      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       !!---------------------------------------------------------------------
       CHARACTER(len=*)     ,                   INTENT(in   ) ::   cdname  ! name of the calling subroutine
       REAL(dp), DIMENSION(:,:)          , TARGET, CONTIGUOUS, INTENT(inout) ::   pt1        ! arrays on which the lbc is applied
@@ -457,6 +472,7 @@ CONTAINS
       INTEGER              , OPTIONAL        , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8), OPTIONAL        , INTENT(in   ) ::   lsend, lrecv   ! indicate how communications are to be carried out
       LOGICAL              , OPTIONAL        , INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !!
       INTEGER                          ::   kfld        ! number of elements that will be attributed
       TYPE(PTR_4d_dp), DIMENSION(30) ::   ptab_ptr    ! pointer array
@@ -501,8 +517,12 @@ CONTAINS
       IF( PRESENT(psgn30) )   CALL load_ptr_2d_dp( pt30, cdna30, psgn30, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       !     
       IF( nn_comm == 1 ) THEN 
-         CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
-      ELSE
+         IF (present(pTag)) THEN
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
+         ELSE
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         ENDIF
+            ELSE
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
       ENDIF
       !
@@ -538,7 +558,7 @@ CONTAINS
       &                   , pt21, cdna21, psgn21, pt22, cdna22, psgn22, pt23, cdna23, psgn23, pt24, cdna24, psgn24  &
       &                   , pt25, cdna25, psgn25, pt26, cdna26, psgn26, pt27, cdna27, psgn27, pt28, cdna28, psgn28  &
       &                   , pt29, cdna29, psgn29, pt30, cdna30, psgn30                                              &
-      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       !!---------------------------------------------------------------------
       CHARACTER(len=*)     ,                   INTENT(in   ) ::   cdname  ! name of the calling subroutine
       REAL(dp), DIMENSION(:,:,:)          , TARGET, CONTIGUOUS, INTENT(inout) ::   pt1        ! arrays on which the lbc is applied
@@ -564,6 +584,7 @@ CONTAINS
       INTEGER              , OPTIONAL        , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8), OPTIONAL        , INTENT(in   ) ::   lsend, lrecv   ! indicate how communications are to be carried out
       LOGICAL              , OPTIONAL        , INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !!
       INTEGER                          ::   kfld        ! number of elements that will be attributed
       TYPE(PTR_4d_dp), DIMENSION(30) ::   ptab_ptr    ! pointer array
@@ -608,8 +629,12 @@ CONTAINS
       IF( PRESENT(psgn30) )   CALL load_ptr_3d_dp( pt30, cdna30, psgn30, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       !     
       IF( nn_comm == 1 ) THEN 
-         CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
-      ELSE
+         IF (present(pTag)) THEN
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
+         ELSE
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         ENDIF
+            ELSE
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
       ENDIF
       !
@@ -645,7 +670,7 @@ CONTAINS
       &                   , pt21, cdna21, psgn21, pt22, cdna22, psgn22, pt23, cdna23, psgn23, pt24, cdna24, psgn24  &
       &                   , pt25, cdna25, psgn25, pt26, cdna26, psgn26, pt27, cdna27, psgn27, pt28, cdna28, psgn28  &
       &                   , pt29, cdna29, psgn29, pt30, cdna30, psgn30                                              &
-      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+      &                   , kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       !!---------------------------------------------------------------------
       CHARACTER(len=*)     ,                   INTENT(in   ) ::   cdname  ! name of the calling subroutine
       REAL(dp), DIMENSION(:,:,:,:)          , TARGET, CONTIGUOUS, INTENT(inout) ::   pt1        ! arrays on which the lbc is applied
@@ -671,6 +696,7 @@ CONTAINS
       INTEGER              , OPTIONAL        , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8), OPTIONAL        , INTENT(in   ) ::   lsend, lrecv   ! indicate how communications are to be carried out
       LOGICAL              , OPTIONAL        , INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !!
       INTEGER                          ::   kfld        ! number of elements that will be attributed
       TYPE(PTR_4d_dp), DIMENSION(30) ::   ptab_ptr    ! pointer array
@@ -715,8 +741,12 @@ CONTAINS
       IF( PRESENT(psgn30) )   CALL load_ptr_4d_dp( pt30, cdna30, psgn30, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       !     
       IF( nn_comm == 1 ) THEN 
-         CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
-      ELSE
+         IF (present(pTag)) THEN
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
+         ELSE
+            CALL lbc_lnk_pt2pt(   cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+         ENDIF
+            ELSE
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
       ENDIF
       !
@@ -759,7 +789,7 @@ CONTAINS
    !!   ----   SINGLE PRECISION VERSIONS
    !!
   
-   SUBROUTINE lbc_lnk_pt2pt_sp( cdname, ptab, cd_nat, psgn, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+   SUBROUTINE lbc_lnk_pt2pt_sp( cdname, ptab, cd_nat, psgn, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       CHARACTER(len=*)              , INTENT(in   ) ::   cdname      ! name of the calling subroutine
       TYPE(PTR_4d_sp),  DIMENSION(:), INTENT(inout) ::   ptab        ! pointer of arrays on which apply the b.c.
       CHARACTER(len=1), DIMENSION(:), INTENT(in   ) ::   cd_nat      ! nature of array grid-points
@@ -770,6 +800,7 @@ CONTAINS
       INTEGER ,             OPTIONAL, INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8),OPTIONAL, INTENT(in   ) ::   lsend, lrecv  ! communication with other 4 proc
       LOGICAL,              OPTIONAL, INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER,       OPTIONAL, INTENT(in) :: pTag !present on multithreaded MPI communications
       !
       INTEGER  ::     ji,   jj,  jk,  jl,  jf, jn     ! dummy loop indices
       INTEGER  ::    ipi,  ipj, ipk, ipl, ipf         ! dimension of the input array
@@ -893,7 +924,11 @@ CONTAINS
       !     2. Prepare MPI exchanges     !
       ! -------------------------------- !
       !
-      iStag = (/ 1, 2, 3, 4, 5, 6, 7, 8 /)   ! any value but each one must be different
+      IF(present(pTag)) THEN !we assign different Tags for different parallel communications
+         iStag = (/ 1+(10*pTag), 2+(10*pTag), 3+(10*pTag), 4+(10*pTag), 5+(10*pTag), 6+(10*pTag), 7+(10*pTag), 8 +(10*pTag)/)   ! any value but each one must be different
+      ELSE
+         iStag = (/ 1, 2, 3, 4, 5, 6, 7, 8 /)   ! any value but each one must be different
+      ENDIF
       ! define iRtag with the corresponding iStag, e.g. data received at west where sent at east.
       iRtag(jpwe) = iStag(jpea)   ;   iRtag(jpea) = iStag(jpwe)   ;   iRtag(jpso) = iStag(jpno)   ;   iRtag(jpno) = iStag(jpso)
       iRtag(jpsw) = iStag(jpne)   ;   iRtag(jpse) = iStag(jpnw)   ;   iRtag(jpnw) = iStag(jpse)   ;   iRtag(jpne) = iStag(jpsw)
@@ -1411,7 +1446,7 @@ CONTAINS
    !!   ----   DOUBLE PRECISION VERSIONS
    !!
   
-   SUBROUTINE lbc_lnk_pt2pt_dp( cdname, ptab, cd_nat, psgn, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only )
+   SUBROUTINE lbc_lnk_pt2pt_dp( cdname, ptab, cd_nat, psgn, kfld, kfillmode, pfillval, khls, lsend, lrecv, ld4only, pTag )
       CHARACTER(len=*)              , INTENT(in   ) ::   cdname      ! name of the calling subroutine
       TYPE(PTR_4d_dp),  DIMENSION(:), INTENT(inout) ::   ptab        ! pointer of arrays on which apply the b.c.
       CHARACTER(len=1), DIMENSION(:), INTENT(in   ) ::   cd_nat      ! nature of array grid-points
@@ -1422,6 +1457,7 @@ CONTAINS
       INTEGER ,             OPTIONAL, INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       LOGICAL, DIMENSION(8),OPTIONAL, INTENT(in   ) ::   lsend, lrecv  ! communication with other 4 proc
       LOGICAL,              OPTIONAL, INTENT(in   ) ::   ld4only     ! if .T., do only 4-neighbour comm (ignore corners)
+      INTEGER, OPTIONAL, INTENT(in) :: pTag ! if present, there may be multithreaded messaging
       !
       INTEGER  ::     ji,   jj,  jk,  jl,  jf, jn     ! dummy loop indices
       INTEGER  ::    ipi,  ipj, ipk, ipl, ipf         ! dimension of the input array
@@ -1545,7 +1581,11 @@ CONTAINS
       !     2. Prepare MPI exchanges     !
       ! -------------------------------- !
       !
-      iStag = (/ 1, 2, 3, 4, 5, 6, 7, 8 /)   ! any value but each one must be different
+      IF(present(pTag)) THEN !we assign different Tags for different parallel communications
+         iStag = (/ 1+(10*pTag), 2+(10*pTag), 3+(10*pTag), 4+(10*pTag), 5+(10*pTag), 6+(10*pTag), 7+(10*pTag), 8 +(10*pTag)/)   ! any value but each one must be different
+      ELSE
+         iStag = (/ 1, 2, 3, 4, 5, 6, 7, 8 /)   ! any value but each one must be different
+      ENDIF
       ! define iRtag with the corresponding iStag, e.g. data received at west where sent at east.
       iRtag(jpwe) = iStag(jpea)   ;   iRtag(jpea) = iStag(jpwe)   ;   iRtag(jpso) = iStag(jpno)   ;   iRtag(jpno) = iStag(jpso)
       iRtag(jpsw) = iStag(jpne)   ;   iRtag(jpse) = iStag(jpnw)   ;   iRtag(jpnw) = iStag(jpse)   ;   iRtag(jpne) = iStag(jpsw)
