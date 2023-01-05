@@ -239,6 +239,7 @@ CONTAINS
       INTEGER         , OPTIONAL   , INTENT(in   ) ::   localComm    !
       !
       INTEGER ::   ierr
+      INTEGER ::   provided
       LOGICAL ::   llmpi_init
       !!----------------------------------------------------------------------
 #if ! defined key_mpi_off
@@ -252,8 +253,9 @@ CONTAINS
             WRITE(ctmp2,*) '          without calling MPI_Init before ! '
             CALL ctl_stop( 'STOP', ctmp1, ctmp2 )
          ENDIF
-         CALL mpi_init( ierr )
+         CALL mpi_init_thread(MPI_THREAD_MULTIPLE, provided, ierr )
          IF( ierr /= MPI_SUCCESS ) CALL ctl_stop( 'STOP', ' lib_mpp: Error in routine mpi_init' )
+         IF( provided /= MPI_THREAD_MULTIPLE ) CALL ctl_stop( 'STOP', ' lib_mpp: Error multiple thread security level not provided' )
       ENDIF
 
       IF( PRESENT(localComm) ) THEN
