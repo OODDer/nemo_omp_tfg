@@ -89,7 +89,10 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(nn_hls),jpk)        ::   zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
+      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
+      ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0
+      CALL SYSTEM_CLOCK(cstart,crate,cmax)
       !!----------------------------------------------------------------------
       !
 #if defined key_loop_fusion
@@ -149,6 +152,9 @@ CONTAINS
          END_3D
       END IF
       !
+
+      CALL SYSTEM_CLOCK(pstart,crate,cmax)
+
       DO jn = 1, kjpt            !==  loop over the tracers  ==!
          !
          !        !==  upstream advection with initial mass fluxes & intermediate update  ==!
@@ -274,7 +280,9 @@ CONTAINS
                zwx(ji,jj,jk) =  0.5_wp * pU(ji,jj,jk) * zC4t_u - zwx(ji,jj,jk)
                zwy(ji,jj,jk) =  0.5_wp * pV(ji,jj,jk) * zC4t_v - zwy(ji,jj,jk)
             END_3D
+            CALL SYSTEM_CLOCK(ss1,crate,cmax)
             IF (nn_hls==2) CALL lbc_lnk( 'traadv_fct', zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp )   ! Lateral boundary cond. (unchanged sgn)
+            CALL SYSTEM_CLOCK(se1,crate,cmax)
             !
          END SELECT
          !
@@ -297,11 +305,13 @@ CONTAINS
             zwz(:,:,1) = 0._wp   ! only ocean surface as interior zwz values have been w-masked
          ENDIF
          !
+         CALL SYSTEM_CLOCK(ss2,crate,cmax)
          IF (nn_hls==1) THEN
             CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp, zwx, 'U', -1.0_wp , zwy, 'V', -1.0_wp, zwz, 'T', 1.0_wp )
          ELSE
             CALL lbc_lnk( 'traadv_fct', zwi, 'T', 1.0_wp)
          END IF
+         CALL SYSTEM_CLOCK(se2,crate,cmax)
          !
          IF ( ll_zAimp ) THEN
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )    !* trend and after field with monotonic scheme
@@ -323,7 +333,9 @@ CONTAINS
          !
          !        !==  monotonicity algorithm  ==!
          !
+         CALL SYSTEM_CLOCK(ss3,crate,cmax)
          CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt )
+         CALL SYSTEM_CLOCK(se3,crate,cmax)
          !
          !        !==  final trend with corrected fluxes  ==!
          !
@@ -369,6 +381,7 @@ CONTAINS
          ENDIF
          !
       END DO                     ! end of tracer loop
+      CALL SYSTEM_CLOCK(pend,crate,cmax)
       !
       IF ( ll_zAimp ) THEN
          DEALLOCATE( zwdia, zwinf, zwsup )
@@ -379,6 +392,8 @@ CONTAINS
       IF( l_ptr ) THEN
          DEALLOCATE( zptry )
       ENDIF
+
+      CALL SYSTEM_CLOCK(cend,crate,cmax)
       !
 #endif
    END SUBROUTINE tra_adv_fct
