@@ -394,6 +394,7 @@ CONTAINS
       ENDIF
 
       CALL SYSTEM_CLOCK(cend,crate,cmax)
+      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ',(real ( se1 - ss1 ) / real ( crate )) + (real ( se2 - ss2 ) / real ( crate )) + (real ( se3 - ss3 ) / real ( crate ))
       !
 #endif
    END SUBROUTINE tra_adv_fct
