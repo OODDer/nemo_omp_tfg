@@ -60,9 +60,9 @@ MODULE lbclnk
    PUBLIC   lbc_lnk            ! ocean/ice lateral boundary conditions
    PUBLIC   lbc_lnk_icb        ! iceberg lateral boundary conditions
 
-   REAL(dp), DIMENSION(:), ALLOCATABLE ::   buffsnd_dp, buffrcv_dp   ! MPI send/recv buffers
-   REAL(sp), DIMENSION(:), ALLOCATABLE ::   buffsnd_sp, buffrcv_sp   ! 
-   INTEGER,  DIMENSION(8)              ::   nreq_p2p                 ! request id for MPI_Isend in point-2-point communication
+   REAL(dp), DIMENSION(:), ALLOCATABLE ::   buffsnd_dp, buffrcv_dp, buffsnd_dpp, buffrcv_dpp   ! MPI send/recv buffers
+   REAL(sp), DIMENSION(:), ALLOCATABLE ::   buffsnd_sp, buffrcv_sp, buffsnd_spp, buffrcv_spp   ! 
+   INTEGER,  DIMENSION(8)              ::   nreq_p2p, nreq_p2pp                 ! request id for MPI_Isend in point-2-point communication
    
    !! * Substitutions
    !!#  include "do_loop_substitute.h90"
@@ -945,19 +945,36 @@ CONTAINS
 
       ! Allocate buffer arrays to be sent/received if needed
       iszS = SUM(iszall, mask = llsend)                             ! send buffer size
-      IF( ALLOCATED(buffsnd_sp) ) THEN
-         CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! wait for Isend from the PREVIOUS call
-         IF( SIZE(buffsnd_sp) < iszS )    DEALLOCATE(buffsnd_sp)          ! send buffer is too small
-      ENDIF
-      IF( .NOT. ALLOCATED(buffsnd_sp) )   ALLOCATE( buffsnd_sp(iszS) )
       iszR = SUM(iszall, mask = llrecv)                             ! recv buffer size
-      IF( ALLOCATED(buffrcv_sp) ) THEN
-         IF( SIZE(buffrcv_sp) < iszR )    DEALLOCATE(buffrcv_sp)          ! recv buffer is too small
+
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         IF( ALLOCATED(buffsnd_spp) ) THEN
+            CALL mpi_waitall(8, nreq_p2pp, MPI_STATUSES_IGNORE, ierr)   ! wait for Isend from the PREVIOUS call
+            IF( SIZE(buffsnd_spp) < iszS )    DEALLOCATE(buffsnd_spp)          ! send buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffsnd_spp) )   ALLOCATE( buffsnd_spp(iszS) )
+         IF( ALLOCATED(buffrcv_spp) ) THEN
+            IF( SIZE(buffrcv_spp) < iszR )    DEALLOCATE(buffrcv_spp)          ! recv buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffrcv_spp) )   ALLOCATE( buffrcv_spp(iszR) )
+         !
+         ! default definition when no communication is done. understood by mpi_waitall
+         nreq_p2pp(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
+
+      ELSE
+         IF( ALLOCATED(buffsnd_sp) ) THEN
+            CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! wait for Isend from the PREVIOUS call
+            IF( SIZE(buffsnd_sp) < iszS )    DEALLOCATE(buffsnd_sp)          ! send buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffsnd_sp) )   ALLOCATE( buffsnd_sp(iszS) )
+         IF( ALLOCATED(buffrcv_sp) ) THEN
+            IF( SIZE(buffrcv_sp) < iszR )    DEALLOCATE(buffrcv_sp)          ! recv buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffrcv_sp) )   ALLOCATE( buffrcv_sp(iszR) )
+         !
+         ! default definition when no communication is done. understood by mpi_waitall
+         nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
       ENDIF
-      IF( .NOT. ALLOCATED(buffrcv_sp) )   ALLOCATE( buffrcv_sp(iszR) )
-      !
-      ! default definition when no communication is done. understood by mpi_waitall
-      nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
       !
       ! ----------------------------------------------- !
       !     3. Do east and west MPI_Isend if needed     !
@@ -970,12 +987,20 @@ CONTAINS
       ishti = ishtSi(jn)
       ishtj = ishtSj(jn)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         buffsnd_sp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            buffsnd_spp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ELSE
+            buffsnd_sp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ENDIF
          idxs = idxs + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       ! non-blocking send of the west/east side using local buffer
-      CALL MPI_ISEND( buffsnd_sp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_ISEND( buffsnd_spp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2pp(jn), ierr )
+      ELSE
+         CALL MPI_ISEND( buffsnd_sp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
    ENDIF
 
@@ -996,10 +1021,18 @@ CONTAINS
    CASE ( jpfillmpi   )                 ! fill with data received by MPI
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       !                                 ! blocking receive of the west/east halo in local temporary arrays
-      CALL MPI_RECV( buffrcv_sp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_RECV( buffrcv_spp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ELSE
+         CALL MPI_RECV( buffrcv_sp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_sp(idxr)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_spp(idxr)
+         ELSE
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_sp(idxr)
+         ENDIF
          idxr = idxr + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
    CASE ( jpfillperio )                 ! use periodicity
@@ -1032,12 +1065,20 @@ CONTAINS
       ishti = ishtSi(jn)
       ishtj = ishtSj(jn)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         buffsnd_sp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            buffsnd_spp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ELSE
+            buffsnd_sp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ENDIF         
          idxs = idxs + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       ! non-blocking send of the west/east side using local buffer
-      CALL MPI_ISEND( buffsnd_sp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_ISEND( buffsnd_spp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2pp(jn), ierr )
+      ELSE
+         CALL MPI_ISEND( buffsnd_sp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      ENDIF      
       IF( ln_timing ) CALL tic_tac(.FALSE.)
    ENDIF
 
@@ -1072,10 +1113,18 @@ CONTAINS
    CASE ( jpfillmpi   )                 ! fill with data received by MPI
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       !                                 ! blocking receive of the west/east halo in local temporary arrays
-      CALL MPI_RECV( buffrcv_sp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_RECV( buffrcv_spp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ELSE
+         CALL MPI_RECV( buffrcv_sp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_sp(idxr)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_spp(idxr)
+         ELSE
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_sp(idxr)
+         ENDIF
          idxr = idxr + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
    CASE ( jpfillperio )                 ! use periodicity
@@ -1109,12 +1158,20 @@ CONTAINS
       ishti = ishtSi(jn)
       ishtj = ishtSj(jn)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         buffsnd_sp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            buffsnd_spp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ELSE
+            buffsnd_sp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ENDIF         
          idxs = idxs + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       ! non-blocking send of the west/east side using local buffer
-      CALL MPI_ISEND( buffsnd_sp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_ISEND( buffsnd_spp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2pp(jn), ierr )
+      ELSE
+         CALL MPI_ISEND( buffsnd_sp(ishtS(jn)+1), iszall(jn), MPI_REAL, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
    ENDIF
 
@@ -1130,10 +1187,18 @@ CONTAINS
    CASE ( jpfillmpi   )                 ! fill with data received by MPI
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       !                                 ! blocking receive of the west/east halo in local temporary arrays
-      CALL MPI_RECV( buffrcv_sp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_RECV( buffrcv_spp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ELSE
+         CALL MPI_RECV( buffrcv_sp(ishtR(jn)+1), iszall(jn), MPI_REAL, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_sp(idxr)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_spp(idxr)
+         ELSE
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_sp(idxr)
+         ENDIF
          idxr = idxr + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
    CASE ( jpfillperio )                 ! use periodicity
@@ -1160,10 +1225,18 @@ CONTAINS
       !        if they areg larger than jpi*jpj      !  <- arbitrary max size...
       ! -------------------------------------------- !
       !
-      IF( iszR > jpi*jpj )   DEALLOCATE(buffrcv_sp)                    ! blocking receive -> can directly deallocate
-      IF( iszS > jpi*jpj ) THEN
-         CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! must wait before deallocate send buffer
-         DEALLOCATE(buffsnd_sp)
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         IF( iszR > jpi*jpj )   DEALLOCATE(buffrcv_spp)                    ! blocking receive -> can directly deallocate
+         IF( iszS > jpi*jpj ) THEN
+            CALL mpi_waitall(8, nreq_p2pp, MPI_STATUSES_IGNORE, ierr)   ! must wait before deallocate send buffer
+            DEALLOCATE(buffsnd_spp)
+         ENDIF
+      ELSE
+         IF( iszR > jpi*jpj )   DEALLOCATE(buffrcv_sp)                    ! blocking receive -> can directly deallocate
+         IF( iszS > jpi*jpj ) THEN
+            CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! must wait before deallocate send buffer
+            DEALLOCATE(buffsnd_sp)
+         ENDIF
       ENDIF
       !
    END SUBROUTINE lbc_lnk_pt2pt_sp
@@ -1602,19 +1675,35 @@ CONTAINS
 
       ! Allocate buffer arrays to be sent/received if needed
       iszS = SUM(iszall, mask = llsend)                             ! send buffer size
-      IF( ALLOCATED(buffsnd_dp) ) THEN
-         CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! wait for Isend from the PREVIOUS call
-         IF( SIZE(buffsnd_dp) < iszS )    DEALLOCATE(buffsnd_dp)          ! send buffer is too small
-      ENDIF
-      IF( .NOT. ALLOCATED(buffsnd_dp) )   ALLOCATE( buffsnd_dp(iszS) )
       iszR = SUM(iszall, mask = llrecv)                             ! recv buffer size
-      IF( ALLOCATED(buffrcv_dp) ) THEN
-         IF( SIZE(buffrcv_dp) < iszR )    DEALLOCATE(buffrcv_dp)          ! recv buffer is too small
+
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         IF( ALLOCATED(buffsnd_dpp) ) THEN
+            CALL mpi_waitall(8, nreq_p2pp, MPI_STATUSES_IGNORE, ierr)   ! wait for Isend from the PREVIOUS call
+            IF( SIZE(buffsnd_dpp) < iszS )    DEALLOCATE(buffsnd_dpp)          ! send buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffsnd_dpp) )   ALLOCATE( buffsnd_dpp(iszS) )
+         IF( ALLOCATED(buffrcv_dpp) ) THEN
+            IF( SIZE(buffrcv_dpp) < iszR )    DEALLOCATE(buffrcv_dpp)          ! recv buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffrcv_dpp) )   ALLOCATE( buffrcv_dpp(iszR) )
+         ! default definition when no communication is done. understood by mpi_waitall
+         nreq_p2pp(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
+         
+      ELSE
+         IF( ALLOCATED(buffsnd_dp) ) THEN
+            CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! wait for Isend from the PREVIOUS call
+            IF( SIZE(buffsnd_dp) < iszS )    DEALLOCATE(buffsnd_dp)          ! send buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffsnd_dp) )   ALLOCATE( buffsnd_dp(iszS) )
+         IF( ALLOCATED(buffrcv_dp) ) THEN
+            IF( SIZE(buffrcv_dp) < iszR )    DEALLOCATE(buffrcv_dp)          ! recv buffer is too small
+         ENDIF
+         IF( .NOT. ALLOCATED(buffrcv_dp) )   ALLOCATE( buffrcv_dp(iszR) )
+         ! default definition when no communication is done. understood by mpi_waitall
+         nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
       ENDIF
-      IF( .NOT. ALLOCATED(buffrcv_dp) )   ALLOCATE( buffrcv_dp(iszR) )
       !
-      ! default definition when no communication is done. understood by mpi_waitall
-      nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
       !
       ! ----------------------------------------------- !
       !     3. Do east and west MPI_Isend if needed     !
@@ -1627,12 +1716,21 @@ CONTAINS
       ishti = ishtSi(jn)
       ishtj = ishtSj(jn)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         buffsnd_dp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            buffsnd_dpp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ELSE
+            buffsnd_dp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ENDIF
          idxs = idxs + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       ! non-blocking send of the west/east side using local buffer
-      CALL MPI_ISEND( buffsnd_dp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_ISEND( buffsnd_dpp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2pp(jn), ierr )
+
+      ELSE
+         CALL MPI_ISEND( buffsnd_dp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
    ENDIF
 
@@ -1653,10 +1751,19 @@ CONTAINS
    CASE ( jpfillmpi   )                 ! fill with data received by MPI
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       !                                 ! blocking receive of the west/east halo in local temporary arrays
-      CALL MPI_RECV( buffrcv_dp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_RECV( buffrcv_dpp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+
+      ELSE
+         CALL MPI_RECV( buffrcv_dp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dp(idxr)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dpp(idxr)
+         ELSE
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dp(idxr)
+         ENDIF
          idxr = idxr + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
    CASE ( jpfillperio )                 ! use periodicity
@@ -1689,12 +1796,21 @@ CONTAINS
       ishti = ishtSi(jn)
       ishtj = ishtSj(jn)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         buffsnd_dp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            buffsnd_dpp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ELSE
+            buffsnd_dp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ENDIF
          idxs = idxs + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       ! non-blocking send of the west/east side using local buffer
-      CALL MPI_ISEND( buffsnd_dp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_ISEND( buffsnd_dpp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2pp(jn), ierr )
+
+      ELSE
+         CALL MPI_ISEND( buffsnd_dp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
    ENDIF
 
@@ -1729,10 +1845,19 @@ CONTAINS
    CASE ( jpfillmpi   )                 ! fill with data received by MPI
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       !                                 ! blocking receive of the west/east halo in local temporary arrays
-      CALL MPI_RECV( buffrcv_dp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_RECV( buffrcv_dpp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+
+      ELSE
+         CALL MPI_RECV( buffrcv_dp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ENDIF    
       IF( ln_timing ) CALL tic_tac(.FALSE.)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dp(idxr)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dpp(idxr)
+         ELSE
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dp(idxr)
+         ENDIF
          idxr = idxr + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
    CASE ( jpfillperio )                 ! use periodicity
@@ -1766,12 +1891,21 @@ CONTAINS
       ishti = ishtSi(jn)
       ishtj = ishtSj(jn)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         buffsnd_dp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            buffsnd_dpp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ELSE
+            buffsnd_dp(idxs) = ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl)
+         ENDIF
          idxs = idxs + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       ! non-blocking send of the west/east side using local buffer
-      CALL MPI_ISEND( buffsnd_dp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_ISEND( buffsnd_dpp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2pp(jn), ierr )
+
+      ELSE
+         CALL MPI_ISEND( buffsnd_dp(ishtS(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiSnei(ihls,jn), iStag(jn), icomm, nreq_p2p(jn), ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
    ENDIF
 
@@ -1787,10 +1921,19 @@ CONTAINS
    CASE ( jpfillmpi   )                 ! fill with data received by MPI
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       !                                 ! blocking receive of the west/east halo in local temporary arrays
-      CALL MPI_RECV( buffrcv_dp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         CALL MPI_RECV( buffrcv_dpp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+
+      ELSE
+         CALL MPI_RECV( buffrcv_dp(ishtR(jn)+1), iszall(jn), MPI_DOUBLE_PRECISION, mpiRnei(ihls,jn), iRtag(jn), icomm, MPI_STATUS_IGNORE, ierr )
+      ENDIF
       IF( ln_timing ) CALL tic_tac(.FALSE.)
       DO jf = 1, ipf  ;  DO jl = 1, ipl  ;  DO jk = 1, ipk  ;  DO jj = 1,isizej(jn)  ;  DO ji = 1,isizei(jn)
-         ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dp(idxr)
+         IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dpp(idxr)
+         ELSE
+            ptab(jf)%pt4d(ishti+ji,ishtj+jj,jk,jl) = buffrcv_dp(idxr)
+         ENDIF
          idxr = idxr + 1
       END DO   ;   END DO   ;   END DO   ;   END DO   ;   END DO
    CASE ( jpfillperio )                 ! use periodicity
@@ -1817,10 +1960,18 @@ CONTAINS
       !        if they areg larger than jpi*jpj      !  <- arbitrary max size...
       ! -------------------------------------------- !
       !
-      IF( iszR > jpi*jpj )   DEALLOCATE(buffrcv_dp)                    ! blocking receive -> can directly deallocate
-      IF( iszS > jpi*jpj ) THEN
-         CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! must wait before deallocate send buffer
-         DEALLOCATE(buffsnd_dp)
+      IF(present(pTag) .AND. (mod(pTag,2)==0)) THEN
+         IF( iszR > jpi*jpj )   DEALLOCATE(buffrcv_dpp)                    ! blocking receive -> can directly deallocate
+         IF( iszS > jpi*jpj ) THEN
+            CALL mpi_waitall(8, nreq_p2pp, MPI_STATUSES_IGNORE, ierr)   ! must wait before deallocate send buffer
+            DEALLOCATE(buffsnd_dpp)
+         ENDIF
+      ELSE
+         IF( iszR > jpi*jpj )   DEALLOCATE(buffrcv_dp)                    ! blocking receive -> can directly deallocate
+         IF( iszS > jpi*jpj ) THEN
+            CALL mpi_waitall(8, nreq_p2p, MPI_STATUSES_IGNORE, ierr)   ! must wait before deallocate send buffer
+            DEALLOCATE(buffsnd_dp)
+         ENDIF
       ENDIF
       !
    END SUBROUTINE lbc_lnk_pt2pt_dp
