@@ -1703,6 +1703,11 @@ CONTAINS
          ! default definition when no communication is done. understood by mpi_waitall
          nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
       ENDIF
+      IF(present(pTag))THEN
+         WRITE(*,*)'tra_adv_fct comms:  iszS = ',iszS,'  iszR = ',iszR
+      ELSE
+         WRITE(*,*)'reg comms:          iszS = ',iszS,'  iszR = ',iszR
+      ENDIF
       !
       !
       ! ----------------------------------------------- !
