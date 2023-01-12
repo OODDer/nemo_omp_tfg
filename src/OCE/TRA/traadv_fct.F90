@@ -161,7 +161,7 @@ CONTAINS
       !
 
 	   !$OMP PARALLEL
-      !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj,zfp_wk, zfm_wk,ztra,zC2t_u, zC2t_v, zC4t_u, zC4t_v, zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw,ji, jj, jk, jn, iii, jjj, zzz,myshape,zwinf, zwdia, zwsup,ztrdx, ztrdy, ztrdz, zptry)
+      !$OMP DO FIRSTPRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj,zfp_wk, zfm_wk,ztra,zC2t_u, zC2t_v, zC4t_u, zC4t_v, zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw,ji, jj, jk, jn, iii, jjj, zzz,myshape,zwinf, zwdia, zwsup,ztrdx, ztrdy, ztrdz, zptry)
       DO jn = 1, kjpt            !==  loop over the tracers  ==!
          !
          !        !==  upstream advection with initial mass fluxes & intermediate update  ==!
