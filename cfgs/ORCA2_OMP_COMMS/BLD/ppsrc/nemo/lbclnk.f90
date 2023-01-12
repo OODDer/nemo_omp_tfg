@@ -1689,6 +1689,7 @@ CONTAINS
          IF( .NOT. ALLOCATED(buffrcv_dpp) )   ALLOCATE( buffrcv_dpp(iszR) )
          ! default definition when no communication is done. understood by mpi_waitall
          nreq_p2pp(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
+         WRITE(*,*)'tra_adv_fct comms:  sndbuffpp = ',SHAPE(buffsnd_dpp),'  recvbuffpp= ',SHAPE(buffrcv_dpp)
          
       ELSE
          IF( ALLOCATED(buffsnd_dp) ) THEN
@@ -1702,12 +1703,13 @@ CONTAINS
          IF( .NOT. ALLOCATED(buffrcv_dp) )   ALLOCATE( buffrcv_dp(iszR) )
          ! default definition when no communication is done. understood by mpi_waitall
          nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
+         IF(present(pTag))THEN
+            WRITE(*,*)'tra_adv_fct comms:  sndbuffp = ',SHAPE(buffsnd_dp),'  recvbuffp= ',SHAPE(buffrcv_dp)
+         ELSE
+            WRITE(*,*)'reg comms:          sndbuff = ',SHAPE(buffsnd_dp),'  recvbuff= ',SHAPE(buffrcv_dp)
+         ENDIF
       ENDIF
-      IF(present(pTag))THEN
-         WRITE(*,*)'tra_adv_fct comms:  iszS = ',iszS,'  iszR = ',iszR
-      ELSE
-         WRITE(*,*)'reg comms:          iszS = ',iszS,'  iszR = ',iszR
-      ENDIF
+      
       !
       !
       ! ----------------------------------------------- !
