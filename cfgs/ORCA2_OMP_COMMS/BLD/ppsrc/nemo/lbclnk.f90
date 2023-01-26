@@ -1667,8 +1667,9 @@ CONTAINS
 
       IF(present(pTag))THEN
          WRITE(*,*)ipk, ipl, ipf, ' rank ',mpprank
-         WRITE(*,*)isizei(1),isizei(2),isizei(3),isizei(4) , ' rank ',mpprank
-         WRITE(*,*)isizej(1),isizej(2),isizej(3),isizej(4) , ' rank ',mpprank
+         WRITE(*,*)isizei(1),isizei(2), ' rank ',mpprank
+         WRITE(*,*)isizej(1),isizej(2), ' rank ',mpprank
+         WRITE(*,*)'from ',mpprank,' to ', mpiSnei(ihls,1),mpiSnei(ihls,2)
 
       ENDIF
       ishtS(1) = 0
