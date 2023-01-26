@@ -1666,7 +1666,7 @@ CONTAINS
       iszall(:) = isizei(:) * isizej(:) * ipk * ipl * ipf
 
       IF(present(pTag))THEN
-         WRITE(*,*)SHAPE(isizei),SHAPE(isizej), ipk, ipl, ipf ' rank ',mpprank
+         WRITE(*,*)SHAPE(isizei),SHAPE(isizej), ipk, ipl, ipf, ' rank ',mpprank
       ENDIF
       ishtS(1) = 0
       DO jn = 2, 8
