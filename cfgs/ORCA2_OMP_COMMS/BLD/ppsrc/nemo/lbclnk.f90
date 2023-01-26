@@ -1664,6 +1664,10 @@ CONTAINS
       iRtag(jpsw) = iStag(jpne)   ;   iRtag(jpse) = iStag(jpnw)   ;   iRtag(jpnw) = iStag(jpse)   ;   iRtag(jpne) = iStag(jpsw)
       !
       iszall(:) = isizei(:) * isizej(:) * ipk * ipl * ipf
+
+      IF(present(pTag))THEN
+         WRITE(*,*)SHAPE(isizei),SHAPE(isizej), ipk, ipl, ipf ' rank ',mpprank
+      ENDIF
       ishtS(1) = 0
       DO jn = 2, 8
          ishtS(jn) = ishtS(jn-1) + iszall(jn-1) * COUNT( (/llsend(jn-1)/) )
@@ -1703,9 +1707,6 @@ CONTAINS
          IF( .NOT. ALLOCATED(buffrcv_dp) )   ALLOCATE( buffrcv_dp(iszR) )
          ! default definition when no communication is done. understood by mpi_waitall
          nreq_p2p(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
-         IF(present(pTag))THEN
-            WRITE(*,*)'Sp= ',SHAPE(buffsnd_dp),'  Rp= ',SHAPE(buffrcv_dp), ' rank ',mpprank
-         ENDIF
       ENDIF
       
       !
