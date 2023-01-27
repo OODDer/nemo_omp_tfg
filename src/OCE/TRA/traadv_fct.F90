@@ -594,7 +594,7 @@ CONTAINS
       END DO
       IF (nn_hls==1) THEN
          IF(present(fTag)) THEN
-            CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE., pTag=fTag+2)   ! lateral boundary cond. (unchanged sign)
+            CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE., pTag=(fTag+2))   ! lateral boundary cond. (unchanged sign)
          ELSE  
             CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE.)   ! lateral boundary cond. (unchanged sign)
          ENDIF
