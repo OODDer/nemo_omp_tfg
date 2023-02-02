@@ -1510,7 +1510,7 @@ CONTAINS
    !!   ----   DOUBLE PRECISION VERSIONS
    !!
 
-   SUBROUTINE mpp_nfd_dp( ptab, cd_nat, psgn, kfillmode, pfillval, khls, kfld )
+   SUBROUTINE mpp_nfd_dp( ptab, cd_nat, psgn, kfillmode, pfillval, khls, kfld, fTag)
       TYPE(PTR_4d_dp),  DIMENSION(:), INTENT(inout) ::   ptab        ! pointer of arrays on which apply the b.c.
       CHARACTER(len=1), DIMENSION(:), INTENT(in   ) ::   cd_nat      ! nature of array grid-points
       REAL(dp),  DIMENSION(:), INTENT(in   ) ::   psgn        ! sign used across the north fold boundary
@@ -1518,6 +1518,7 @@ CONTAINS
       REAL(dp)               , INTENT(in   ) ::   pfillval    ! background value (used at closed boundaries)
       INTEGER                       , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       INTEGER                       , INTENT(in   ) ::   kfld        ! number of pt3d arrays
+      INTEGER, OPTIONAL, INTENT(in)                 ::   fTag        ! if present, there may be multithreaded messaging
       !
       LOGICAL  ::   ll_add_line
       INTEGER  ::   ji,  jj,  jk,  jl, jf, jr, jg, jn   ! dummy loop indices
@@ -1648,7 +1649,11 @@ CONTAINS
          DO jn = 1, nfd_nbnei
             iproc = nfd_rknei(jn)
             IF( iproc /= narea-1 .AND. iproc /= -1 ) THEN
-               CALL MPI_Isend( zbufs, ibuffsize, MPI_DOUBLE_PRECISION, iproc, 5, mpi_comm_oce, ireq_s(jn), ierr )
+               IF(PRESENT(fTag)) THEN
+                  CALL MPI_Isend( zbufs, ibuffsize, MPI_DOUBLE_PRECISION, iproc, fTag, mpi_comm_oce, ireq_s(jn), ierr )
+               ELSE
+                  CALL MPI_Isend( zbufs, ibuffsize, MPI_DOUBLE_PRECISION, iproc, 5, mpi_comm_oce, ireq_s(jn), ierr )
+               ENDIF
             ELSE
                ireq_s(jn) = MPI_REQUEST_NULL
             ENDIF
@@ -1693,7 +1698,11 @@ CONTAINS
                END DO   ;   END DO   ;   END DO
                !
             ELSE                               ! get data from a neighbour trough communication
-               CALL MPI_Irecv( zbufr(:,:,:,:,jn), ibuffsize, MPI_DOUBLE_PRECISION, iproc, 5, mpi_comm_oce, ireq_r(jn), ierr )
+               IF(PRESENT(fTag)) THEN
+                  CALL MPI_Irecv( zbufr(:,:,:,:,jn), ibuffsize, MPI_DOUBLE_PRECISION, iproc, fTag, mpi_comm_oce, ireq_r(jn), ierr )
+               ELSE
+                  CALL MPI_Irecv( zbufr(:,:,:,:,jn), ibuffsize, MPI_DOUBLE_PRECISION, iproc, 5, mpi_comm_oce, ireq_r(jn), ierr )
+               ENDIF
             ENDIF
             !
          END DO   ! nfd_nbnei

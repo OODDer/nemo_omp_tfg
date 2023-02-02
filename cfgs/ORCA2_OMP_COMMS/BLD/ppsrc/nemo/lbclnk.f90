@@ -1094,7 +1094,7 @@ CONTAINS
       !
       IF( l_IdoNFold ) THEN
          IF( jpni == 1 )  THEN   ;   CALL lbc_nfd( ptab, cd_nat, psgn                  , ihls, ipf )   ! self NFold
-         ELSE                    ;   CALL mpp_nfd( ptab, cd_nat, psgn, ifill_nfd, zland, ihls, ipf )   ! mpi  NFold
+         ELSE                    ;   CALL mpp_nfd( ptab, cd_nat, psgn, ifill_nfd, zland, ihls, ipf, fTag=(pTag*10) )   ! mpi  NFold
          ENDIF
       ENDIF
       !
