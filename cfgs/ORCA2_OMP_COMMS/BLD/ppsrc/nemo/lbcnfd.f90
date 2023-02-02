@@ -1115,7 +1115,7 @@ CONTAINS
    !!   ----   SINGLE PRECISION VERSIONS
    !!
 
-   SUBROUTINE mpp_nfd_sp( ptab, cd_nat, psgn, kfillmode, pfillval, khls, kfld )
+   SUBROUTINE mpp_nfd_sp( ptab, cd_nat, psgn, kfillmode, pfillval, khls, kfld, fTag )
       TYPE(PTR_4d_sp),  DIMENSION(:), INTENT(inout) ::   ptab        ! pointer of arrays on which apply the b.c.
       CHARACTER(len=1), DIMENSION(:), INTENT(in   ) ::   cd_nat      ! nature of array grid-points
       REAL(sp),  DIMENSION(:), INTENT(in   ) ::   psgn        ! sign used across the north fold boundary
@@ -1123,6 +1123,7 @@ CONTAINS
       REAL(sp)               , INTENT(in   ) ::   pfillval    ! background value (used at closed boundaries)
       INTEGER                       , INTENT(in   ) ::   khls        ! halo size, default = nn_hls
       INTEGER                       , INTENT(in   ) ::   kfld        ! number of pt3d arrays
+      INTEGER, OPTIONAL, INTENT(in)                 ::   fTag        ! if present, there may be multithreaded messaging
       !
       LOGICAL  ::   ll_add_line
       INTEGER  ::   ji,  jj,  jk,  jl, jf, jr, jg, jn   ! dummy loop indices
