@@ -194,7 +194,7 @@ CONTAINS
 	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2) 
             DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
             DO jn = 1, kjpt
-               zwz(ji,jj, mikt(ji,jj),jn ) = pW(ji,jj,mikt(ji,jj),jn) * pt(ji,jj,mikt(ji,jj),jn,Kbb)   ! linear free surface
+               zwz(ji,jj, mikt(ji,jj),jn ) = pW(ji,jj,mikt(ji,jj)) * pt(ji,jj,mikt(ji,jj),jn,Kbb)   ! linear free surface
             ENDDO
             END_2D
 	         !$OMP END DO
@@ -440,7 +440,7 @@ CONTAINS
          DO jn = 1, kjpt
             zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) ) 
             zfm_wk = wi(ji,jj,jk) - ABS( wi(ji,jj,jk) ) 
-            zwz(ji,jj,jk,jn) = zwz(ji,jj,jk,jn) + 0.5 * e1e2t(ji,jj) * ( zfp_wk * ztw(ji,jj,jk) + zfm_wk * ztw(ji,jj,jk-1,jn) ) * wmask(ji,jj,jk)
+            zwz(ji,jj,jk,jn) = zwz(ji,jj,jk,jn) + 0.5 * e1e2t(ji,jj) * ( zfp_wk * ztw(ji,jj,jk,jn) + zfm_wk * ztw(ji,jj,jk-1,jn) ) * wmask(ji,jj,jk)
          ENDDO
          END_3D
 	      !$OMP END DO
