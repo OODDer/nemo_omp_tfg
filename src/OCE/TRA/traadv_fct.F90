@@ -194,7 +194,7 @@ CONTAINS
 	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2) 
             DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
             DO jn = 1, kjpt
-               zwz(ji,jj, mikt(ji,jj) ) = pW(ji,jj,mikt(ji,jj)) * pt(ji,jj,mikt(ji,jj),jn,Kbb)   ! linear free surface
+               zwz(ji,jj, mikt(ji,jj),jn ) = pW(ji,jj,mikt(ji,jj),jn) * pt(ji,jj,mikt(ji,jj),jn,Kbb)   ! linear free surface
             ENDDO
             END_2D
 	         !$OMP END DO
@@ -202,7 +202,7 @@ CONTAINS
 	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2)
             DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
             DO jn = 1, kjpt
-               zwz(ji,jj,1) = pW(ji,jj,1) * pt(ji,jj,1,jn,Kbb)
+               zwz(ji,jj,1,jn) = pW(ji,jj,1) * pt(ji,jj,1,jn,Kbb)
             ENDDO
             END_2D
 	         !$OMP END DO
@@ -231,7 +231,7 @@ CONTAINS
          CALL tridia_solver( zwdia, zwsup, zwinf, zwi(:,:,:,jn), zwi(:,:,:,jn) , 0 )
          ENDDO
          !
-         ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp ;
+         ztw(:,:,1,:) = 0._wp ; ztw(:,:,jpk,:) = 0._wp ;
          !extrae_event(30,1)
 	      !$OMP END SINGLE
 	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
@@ -247,7 +247,7 @@ CONTAINS
 	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
          DO jn = 1, kjpt
-            pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztw(ji,jj,jk) - ztw(ji  ,jj  ,jk+1) ) &
+            pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztw(ji,jj,jk,jn) - ztw(ji  ,jj  ,jk+1,jn) ) &
                &                                        * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
          ENDDO
          END_3D
@@ -270,15 +270,15 @@ CONTAINS
 	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
          DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )
          DO jn = 1, kjpt
-            zwx(ji,jj,jk,jn) = 0.5_wp * pU(ji,jj,jk) * ( pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj,jk,jn,Kmm) ) - zwx(ji,jj,jk)
-            zwy(ji,jj,jk,jn) = 0.5_wp * pV(ji,jj,jk) * ( pt(ji,jj,jk,jn,Kmm) + pt(ji,jj+1,jk,jn,Kmm) ) - zwy(ji,jj,jk)
+            zwx(ji,jj,jk,jn) = 0.5_wp * pU(ji,jj,jk) * ( pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj,jk,jn,Kmm) ) - zwx(ji,jj,jk,jn)
+            zwy(ji,jj,jk,jn) = 0.5_wp * pV(ji,jj,jk) * ( pt(ji,jj,jk,jn,Kmm) + pt(ji,jj+1,jk,jn,Kmm) ) - zwy(ji,jj,jk,jn)
          ENDDO
          END_3D
 	      !$OMP END DO
          !
       CASE(  4  )                   !- 4th order centered
-         zltu(:,:,jpk) = 0._wp            ! Bottom value : flux set to zero
-         zltv(:,:,jpk) = 0._wp
+         zltu(:,:,jpk,:) = 0._wp            ! Bottom value : flux set to zero
+         zltv(:,:,jpk,:) = 0._wp
 	      !RACE CONDITIONS ?
          DO jk = 1, jpkm1                 ! Laplacian
             !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2)
@@ -318,7 +318,7 @@ CONTAINS
             ! needed to ensure halo 1 - halo 2 compatibility
             zwx(ji,jj,jk,jn) =  0.5_wp * pU(ji,jj,jk) * ( zC2t_u + ( zltu(ji,jj,jk,jn) - zltu(ji+1,jj,jk,jn)   &
                           &                                     )                                     & ! bracket for halo 1 - halo 2 compatibility
-                          &                          ) - zwx(ji,jj,jk)
+                          &                          ) - zwx(ji,jj,jk,jn)
             zwy(ji,jj,jk,jn) =  0.5_wp * pV(ji,jj,jk) * ( zC2t_v + ( zltv(ji,jj,jk,jn) - zltv(ji,jj+1,jk,jn)   &
                           &                                     )                                     & ! bracket for halo 1 - halo 2 compatibility
                           &                          ) - zwy(ji,jj,jk,jn)
@@ -327,8 +327,8 @@ CONTAINS
 	      !$OMP END DO
          !
       CASE(  41 )                   !- 4th order centered       ==>>   !!gm coding attempt   need to be tested
-         ztu(:,:,jpk) = 0._wp             ! Bottom value : flux set to zero
-         ztv(:,:,jpk) = 0._wp
+         ztu(:,:,jpk,:) = 0._wp             ! Bottom value : flux set to zero
+         ztv(:,:,jpk,:) = 0._wp
 	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )    ! 1st derivative (gradient)
          DO jn = 1, kjpt
@@ -352,7 +352,7 @@ CONTAINS
             zC2t_v = pt(ji,jj,jk,jn,Kmm) + pt(ji  ,jj+1,jk,jn,Kmm) 
             !                                                  ! C4 interpolation of T at u- & v-points (x2)
             zC4t_u =  zC2t_u + r1_6 * ( ztu(ji-1,jj  ,jk,jn) - ztu(ji+1,jj  ,jk,jn) ) 
-            zC4t_v =  zC2t_v + r1_6 * ( ztv(ji  ,jj-1,jk) - ztv(ji  ,jj+1,jk) ) 
+            zC4t_v =  zC2t_v + r1_6 * ( ztv(ji  ,jj-1,jk,jn) - ztv(ji  ,jj+1,jk,jn) ) 
             !                                                  ! C4 minus upstream advective fluxes
             zwx(ji,jj,jk,jn) =  0.5_wp * pU(ji,jj,jk) * zC4t_u - zwx(ji,jj,jk,jn)
             zwy(ji,jj,jk,jn) =  0.5_wp * pV(ji,jj,jk) * zC4t_v - zwy(ji,jj,jk,jn)
@@ -399,7 +399,7 @@ CONTAINS
          !
       END SELECT
       IF( ln_linssh ) THEN    ! top ocean value: high order = upstream  ==>>  zwz=0
-         zwz(:,:,1) = 0._wp   ! only ocean surface as interior zwz values have been w-masked
+         zwz(:,:,1,:) = 0._wp   ! only ocean surface as interior zwz values have been w-masked
       ENDIF
       !
       !extrae_event(30,0)
@@ -475,7 +475,7 @@ CONTAINS
       !
       IF ( ll_zAimp ) THEN
          !
-         ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp
+         ztw(:,:,1,:) = 0._wp ; ztw(:,:,jpk,:) = 0._wp
 	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
          DO_3D( 0, 0, 0, 0, 2, jpkm1 )      ! Interior value ( multiplied by wmask)
          DO jn = 1, kjpt
@@ -744,7 +744,7 @@ CONTAINS
 !!gm
       !
       IF ( ln_isfcav ) THEN            ! set level two values which may not be set in ISF case
-         zwd(:,:,2,:) = 1._wp  ;  zwi(:,:,2) = 0._wp  ;  zws(:,:,2) = 0._wp  ;  zwrm(:,:,2) = 0._wp
+         zwd(:,:,2) = 1._wp  ;  zwi(:,:,2) = 0._wp  ;  zws(:,:,2) = 0._wp  ;  zwrm(:,:,2) = 0._wp
       END IF
       !
       DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )              ! 2nd order centered at top & bottom
