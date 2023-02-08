@@ -89,7 +89,7 @@ CONTAINS
       REAL(wp) ::   zfp_ui, zfp_vj, zfp_wk, zC2t_u, zC4t_u   !   -      -
       REAL(wp) ::   zfm_ui, zfm_vj, zfm_wk, zC2t_v, zC4t_v   !   -      -
       REAL(wp), DIMENSION(A2D(nn_hls),jpk,kjpt)        ::   zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw
-      REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
+      REAL(wp), DIMENSION(:,:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
       INTEGER, DIMENSION(1:3) :: myshape
       INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax
@@ -121,24 +121,24 @@ CONTAINS
       ENDIF
 
       !! -- init to 0
-      zwi(:,:,:) = 0._wp
-      zwx(:,:,:) = 0._wp
-      zwy(:,:,:) = 0._wp
-      zwz(:,:,:) = 0._wp
-      ztu(:,:,:) = 0._wp
-      ztv(:,:,:) = 0._wp
-      zltu(:,:,:) = 0._wp
-      zltv(:,:,:) = 0._wp
-      ztw(:,:,:) = 0._wp
+      zwi(:,:,:,:) = 0._wp
+      zwx(:,:,:,:) = 0._wp
+      zwy(:,:,:,:) = 0._wp
+      zwz(:,:,:,:) = 0._wp
+      ztu(:,:,:,:) = 0._wp
+      ztv(:,:,:,:) = 0._wp
+      zltu(:,:,:,:) = 0._wp
+      zltv(:,:,:,:) = 0._wp
+      ztw(:,:,:,:) = 0._wp
       !
       IF( l_trd .OR. l_hst )  THEN
          ALLOCATE( ztrdx(A2D(nn_hls),jpk,jn), ztrdy(A2D(nn_hls),jpk,jn), ztrdz(A2D(nn_hls),jpk,jn) )
-         ztrdx(:,:,:) = 0._wp   ;    ztrdy(:,:,:) = 0._wp   ;   ztrdz(:,:,:) = 0._wp
+         ztrdx(:,:,:,:) = 0._wp   ;    ztrdy(:,:,:,:) = 0._wp   ;   ztrdz(:,:,:,:) = 0._wp
       ENDIF
       !
       IF( l_ptr ) THEN
          ALLOCATE( zptry(A2D(nn_hls),jpk,jn) )
-         zptry(:,:,:) = 0._wp
+         zptry(:,:,:,:) = 0._wp
       ENDIF
       !
       ! If adaptive vertical advection, check if it is needed on this PE at this time
@@ -227,7 +227,9 @@ CONTAINS
       IF ( ll_zAimp ) THEN
          !extrae_event(30,0)
 	      !$OMP SINGLE
-         CALL tridia_solver( zwdia, zwsup, zwinf, zwi, zwi , 0 )
+         DO jn = 1, kjpt
+         CALL tridia_solver( zwdia, zwsup, zwinf, zwi(:,:,:,jn), zwi(:,:,:,jn) , 0 )
+         ENDDO
          !
          ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp ;
          !extrae_event(30,1)
@@ -254,10 +256,10 @@ CONTAINS
       END IF
       !
       IF( l_trd .OR. l_hst )  THEN             ! trend diagnostics (contribution of upstream fluxes)
-         ztrdx(:,:,:) = zwx(:,:,:)   ;   ztrdy(:,:,:) = zwy(:,:,:)   ;   ztrdz(:,:,:) = zwz(:,:,:)
+         ztrdx(:,:,:,:) = zwx(:,:,:,:)   ;   ztrdy(:,:,:,:) = zwy(:,:,:,:)   ;   ztrdz(:,:,:,:) = zwz(:,:,:,:)
       END IF
       !                             ! "Poleward" heat and salt transports (contribution of upstream fluxes)
-      IF( l_ptr )   zptry(:,:,:) = zwy(:,:,:)
+      IF( l_ptr )   zptry(:,:,:,:) = zwy(:,:,:,:)
       !
       !        !==  anti-diffusive flux : high order minus low order  ==!
       !
@@ -382,7 +384,9 @@ CONTAINS
       CASE(  4  )                   !- 4th order COMPACT
          !extrae_event(30,0)
 	      !$OMP SINGLE
-         CALL interp_4th_cpt( pt(:,:,:,jn,Kmm) , ztw )   ! zwt = COMPACT interpolation of T at w-point
+         DO jn = 1, kjpt
+         CALL interp_4th_cpt( pt(:,:,:,jn,Kmm) , ztw(:,:,:,jn))   ! zwt = COMPACT interpolation of T at w-point
+         ENDDO
          !extrae_event(30,1)
 	      !$OMP END SINGLE
 	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
@@ -425,7 +429,9 @@ CONTAINS
          !
          !extrae_event(30,0)
 	      !$OMP SINGLE
-         CALL tridia_solver( zwdia, zwsup, zwinf, ztw, ztw , 0 )
+         DO jn = 1, kjpt
+         CALL tridia_solver( zwdia, zwsup, zwinf, ztw(:,:,:,jn), ztw(:,:,:,jn) , 0 )
+         ENDDO
 	      !$OMP END SINGLE
          !
          !extrae_event(30,1)
@@ -446,7 +452,9 @@ CONTAINS
 	   !$OMP SINGLE
       !HEREE
       CALL SYSTEM_CLOCK(ss3,crate,cmax)
-      CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt )
+      DO jn = 1, kjpt
+      CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx(:,:,:,jn), zwy(:,:,:,jn), zwz(:,:,:,jn), zwi(:,:,:,jn), p2dt )
+      ENDDO
       CALL SYSTEM_CLOCK(se3,crate,cmax)
       !extrae_event(30,1)
 	   !$OMP END SINGLE
@@ -495,12 +503,18 @@ CONTAINS
          ztrdz(:,:,:,:) = ztrdz(:,:,:,:) + zwz(:,:,:,:)  !
          !
          IF( l_trd ) THEN              ! trend diagnostics
-            CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_xad, ztrdx, pU, pt(:,:,:,jn,Kmm) )
-            CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_yad, ztrdy, pV, pt(:,:,:,jn,Kmm) )
-            CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_zad, ztrdz, pW, pt(:,:,:,jn,Kmm) )
+            DO jn = 1, kjpt
+            CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_xad, ztrdx(:,:,:,jn), pU, pt(:,:,:,jn,Kmm) )
+            CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_yad, ztrdy(:,:,:,jn), pV, pt(:,:,:,jn,Kmm) )
+            CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_zad, ztrdz(:,:,:,jn), pW, pt(:,:,:,jn,Kmm) )
+            ENDDO
          ENDIF
          !                             ! heat/salt transport
-         IF( l_hst )   CALL dia_ar5_hst( jn, 'adv', ztrdx(:,:,:), ztrdy(:,:,:) )
+         IF( l_hst ) THEN
+            DO jn = 1, kjpt
+              CALL dia_ar5_hst( jn, 'adv', ztrdx(:,:,:,jn), ztrdy(:,:,:,jn) )
+            ENDDO
+         ENDIF
          !
          !$OMP END SINGLE
       ENDIF
@@ -509,7 +523,9 @@ CONTAINS
       IF( l_ptr ) THEN              ! "Poleward" transports
          !$OMP SINGLE
          zptry(:,:,:,:) = zptry(:,:,:,:) + zwy(:,:,:,:)  ! <<< add anti-diffusive fluxes
-         CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:,:) )
+         DO jn = 1, kjpt
+         CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:,jn) )
+         ENDDO
          !$OMP END SINGLE
       ENDIF
 
@@ -728,7 +744,7 @@ CONTAINS
 !!gm
       !
       IF ( ln_isfcav ) THEN            ! set level two values which may not be set in ISF case
-         zwd(:,:,2) = 1._wp  ;  zwi(:,:,2) = 0._wp  ;  zws(:,:,2) = 0._wp  ;  zwrm(:,:,2) = 0._wp
+         zwd(:,:,2,:) = 1._wp  ;  zwi(:,:,2) = 0._wp  ;  zws(:,:,2) = 0._wp  ;  zwrm(:,:,2) = 0._wp
       END IF
       !
       DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )              ! 2nd order centered at top & bottom
