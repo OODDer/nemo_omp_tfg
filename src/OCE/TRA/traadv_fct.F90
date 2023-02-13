@@ -89,9 +89,9 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(nn_hls),jpk)        ::   zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
-      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax
+      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax, sacc
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
-      ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0
+      ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0; sacc = 0
       CALL SYSTEM_CLOCK(cstart,crate,cmax)
       !!----------------------------------------------------------------------
       !
@@ -380,6 +380,7 @@ CONTAINS
             CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:) )
          ENDIF
          !
+         sacc = sacc + (( se1 - ss1 ) / ( crate )) + (( se2 - ss2 ) / ( crate )) + (( se3 - ss3 ) / ( crate ))
       END DO                     ! end of tracer loop
       CALL SYSTEM_CLOCK(pend,crate,cmax)
       !
@@ -394,7 +395,7 @@ CONTAINS
       ENDIF
 
       CALL SYSTEM_CLOCK(cend,crate,cmax)
-      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ',(real ( se1 - ss1 ) / real ( crate )) + (real ( se2 - ss2 ) / real ( crate )) + (real ( se3 - ss3 ) / real ( crate ))
+      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ', real (sacc)
       !
 #endif
    END SUBROUTINE tra_adv_fct
