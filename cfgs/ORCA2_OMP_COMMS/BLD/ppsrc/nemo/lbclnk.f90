@@ -1670,13 +1670,6 @@ CONTAINS
       !
       iszall(:) = isizei(:) * isizej(:) * ipk * ipl * ipf
 
-      IF(present(pTag))THEN
-         WRITE(*,*)ipk, ipl, ipf, ' rank ',mpprank
-         WRITE(*,*)isizei(1),isizei(2), ' rank ',mpprank
-         WRITE(*,*)isizej(1),isizej(2), ' rank ',mpprank
-         WRITE(*,*)'from ',mpprank,' to ', mpiSnei(ihls,1),mpiSnei(ihls,2)
-
-      ENDIF
       ishtS(1) = 0
       DO jn = 2, 8
          ishtS(jn) = ishtS(jn-1) + iszall(jn-1) * COUNT( (/llsend(jn-1)/) )
@@ -1702,7 +1695,6 @@ CONTAINS
          IF( .NOT. ALLOCATED(buffrcv_dpp) )   ALLOCATE( buffrcv_dpp(iszR) )
          ! default definition when no communication is done. understood by mpi_waitall
          nreq_p2pp(:) = MPI_REQUEST_NULL   ! WARNING: Must be done after the call to mpi_waitall just above
-         !WRITE(*,*)'Spp= ',SHAPE(buffsnd_dpp),'  Rpp= ',SHAPE(buffrcv_dpp), ' rank ',mpprank
          
       ELSE
          IF( ALLOCATED(buffsnd_dp) ) THEN
