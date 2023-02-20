@@ -96,7 +96,7 @@ CONTAINS
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
       !!----------------------------------------------------------------------
       !
-      ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0
+      ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0; acc = 0
       CALL SYSTEM_CLOCK(cstart,crate,cmax)
       !
 #if defined key_loop_fusion
