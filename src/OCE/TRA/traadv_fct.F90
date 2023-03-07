@@ -178,7 +178,7 @@ CONTAINS
          zwy(ji,jj,jk,jn) = 0.5 * ( zfp_vj * pt(ji,jj,jk,jn,Kbb) + zfm_vj * pt(ji  ,jj+1,jk,jn,Kbb) )
       ENDDO
       END_3D
-	   !$OMP END DO
+	   !$OMP END DO NOWAIT
       !                               !* upstream tracer flux in the k direction *!
 	   !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
       DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )      ! Interior value ( multiplied by wmask)
@@ -274,7 +274,7 @@ CONTAINS
             zwy(ji,jj,jk,jn) = 0.5_wp * pV(ji,jj,jk) * ( pt(ji,jj,jk,jn,Kmm) + pt(ji,jj+1,jk,jn,Kmm) ) - zwy(ji,jj,jk,jn)
          ENDDO
          END_3D
-	      !$OMP END DO
+	      !$OMP END DO NOWAIT
          !
       CASE(  4  )                   !- 4th order centered
          zltu(:,:,jpk,:) = 0._wp            ! Bottom value : flux set to zero
@@ -379,7 +379,7 @@ CONTAINS
                &              - zwz(ji,jj,jk,jn)  ) * wmask(ji,jj,jk)
          ENDDO
          END_3D
-	      !$OMP END DO
+	      !$OMP END DO 
          !
       CASE(  4  )                   !- 4th order COMPACT
          !extrae_event(30,0)
