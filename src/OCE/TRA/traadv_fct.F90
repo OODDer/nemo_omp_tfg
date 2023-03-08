@@ -164,7 +164,7 @@ CONTAINS
       jn = 1
       !PRIVATE(ztrdx, ztrdy, ztrdz, zptry, zwinf, zwdia, zwsup)
       !FIRSTPRIVATE()  
-      !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj,zfp_wk, zfm_wk,ztra,zC2t_u, zC2t_v, zC4t_u, zC4t_v, ztw,ji, jj, jk, iii, jjj, zzz, myshape,zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv,ss1,ss2,se1,se2,ss3,se3) REDUCTION(MAX:acc) 
+      !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj,zfp_wk, zfm_wk,ztra,zC2t_u, zC2t_v, zC4t_u, zC4t_v, ztw,ji, jj, jk, iii, jjj, zzz, myshape,zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv,ss1,ss2,se1,se2,ss3,se3,ztrdx, ztrdy, ztrdz, zptry, zwinf, zwdia, zwsup) 
       DO jn = jn, kjpt            !==  loop over the tracers  ==!
          !
          !        !==  upstream advection with initial mass fluxes & intermediate update  ==!
@@ -499,7 +499,6 @@ CONTAINS
             !OMP END SINGLE
          ENDIF
          !
-      acc = ( se1 - ss1 ) + ( se2 - ss2 ) + ( se3 - ss3 )
       END DO                     ! end of tracer loop
 	   !$OMP END PARALLEL
       CALL SYSTEM_CLOCK(pend,crate,cmax)
@@ -515,7 +514,8 @@ CONTAINS
       ENDIF
       !
       CALL SYSTEM_CLOCK(cend,crate,cmax)
-      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ', (real ( acc ) / real ( crate )) 
+      acc = ( se1 - ss1 ) + ( se2 - ss2 ) + ( se3 - ss3 )
+      WRITE ( *, '(A,F8.6,A,F8.6,A,F8.6)' ) '= T= ', real ( cend - cstart ) / real ( crate ), ' = p= ', real ( pend - pstart ) / real ( crate ), '= s= ', real ( acc ) / real ( crate ) 
 #endif
    END SUBROUTINE tra_adv_fct
 
