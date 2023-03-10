@@ -166,7 +166,7 @@ CONTAINS
       !        !==  upstream advection with initial mass fluxes & intermediate update  ==!
       !                    !* upstream tracer flux in the i and j direction
       !extrae_event(30,1)
-	   !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj) SCHEDULE(RUNTIME) COLLAPSE(3)
+	   !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj) SCHEDULE(RUNTIME)  
       DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )
       DO jn = 1, kjpt
          ! upstream scheme
@@ -178,9 +178,9 @@ CONTAINS
          zwy(ji,jj,jk,jn) = 0.5 * ( zfp_vj * pt(ji,jj,jk,jn,Kbb) + zfm_vj * pt(ji  ,jj+1,jk,jn,Kbb) )
       ENDDO
       END_3D
-	   !$OMP END DO NOWAIT
+	   !$OMP END DO
       !                               !* upstream tracer flux in the k direction *!
-	   !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
+	   !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME)  
       DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )      ! Interior value ( multiplied by wmask)
       DO jn = 1, kjpt
          zfp_wk = pW(ji,jj,jk) + ABS( pW(ji,jj,jk) ) 
@@ -191,7 +191,7 @@ CONTAINS
 	   !$OMP END DO
       IF( ln_linssh ) THEN               ! top ocean value (only in linear free surface as zwz has been w-masked)
          IF( ln_isfcav ) THEN                        ! top of the ice-shelf cavities and at the ocean surface
-	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2) 
+	         !$OMP DO SCHEDULE(RUNTIME)   
             DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
             DO jn = 1, kjpt
                zwz(ji,jj, mikt(ji,jj),jn ) = pW(ji,jj,mikt(ji,jj)) * pt(ji,jj,mikt(ji,jj),jn,Kbb)   ! linear free surface
@@ -199,7 +199,7 @@ CONTAINS
             END_2D
 	         !$OMP END DO
          ELSE                                        ! no cavities: only at the ocean surface
-	         !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2)
+	         !$OMP DO SCHEDULE(RUNTIME)  
             DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
             DO jn = 1, kjpt
                zwz(ji,jj,1,jn) = pW(ji,jj,1) * pt(ji,jj,1,jn,Kbb)
@@ -209,7 +209,7 @@ CONTAINS
          ENDIF
       ENDIF
       !
-	   !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
+	   !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME)  
       DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )   !* trend and after field with monotonic scheme
          !                               ! total intermediate advective trends
          DO jn = 1, kjpt
@@ -234,7 +234,7 @@ CONTAINS
          ztw(:,:,1,:) = 0._wp ; ztw(:,:,jpk,:) = 0._wp ;
          !extrae_event(30,1)
 	      !$OMP END SINGLE
-	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME)  
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
          DO jn = 1, kjpt
             zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) ) 
@@ -244,7 +244,7 @@ CONTAINS
          ENDDO
          END_3D
 	      !$OMP END DO
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO SCHEDULE(RUNTIME)  
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
          DO jn = 1, kjpt
             pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztw(ji,jj,jk,jn) - ztw(ji  ,jj  ,jk+1,jn) ) &
@@ -267,7 +267,7 @@ CONTAINS
       !
       CASE(  2  )                   !- 2nd order centered
 	 !FINE
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO SCHEDULE(RUNTIME)  
          DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )
          DO jn = 1, kjpt
             zwx(ji,jj,jk,jn) = 0.5_wp * pU(ji,jj,jk) * ( pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj,jk,jn,Kmm) ) - zwx(ji,jj,jk,jn)
@@ -281,7 +281,7 @@ CONTAINS
          zltv(:,:,jpk,:) = 0._wp
 	      !RACE CONDITIONS ?
          DO jk = 1, jpkm1                 ! Laplacian
-            !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2)
+            !$OMP DO SCHEDULE(RUNTIME)  
             DO_2D( 1, 0, 1, 0 )                 ! 1st derivative (gradient)
             DO jn = 1, kjpt
                ztu(ji,jj,jk,jn) = ( pt(ji+1,jj  ,jk,jn,Kmm) - pt(ji,jj,jk,jn,Kmm) ) * umask(ji,jj,jk)
@@ -289,7 +289,7 @@ CONTAINS
             ENDDO
             END_2D
             !$OMP END DO
-            !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(2)
+            !$OMP DO SCHEDULE(RUNTIME)  
             DO_2D( 0, 0, 0, 0 )                 ! 2nd derivative * 1/ 6
             DO jn = 1, kjpt
                zltu(ji,jj,jk,jn) = (  ztu(ji,jj,jk,jn) + ztu(ji-1,jj,jk,jn)  ) * r1_6
@@ -308,7 +308,7 @@ CONTAINS
          !
 	      !$OMP END SINGLE
          !extrae_event(30,1)
-	      !$OMP DO PRIVATE(zC2t_u, zC2t_v) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(zC2t_u, zC2t_v) SCHEDULE(RUNTIME)  
          DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 ) 
          DO jn = 1, kjpt
             zC2t_u = pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj  ,jk,jn,Kmm)   ! 2 x C2 interpolation of T at u- & v-points
@@ -329,7 +329,7 @@ CONTAINS
       CASE(  41 )                   !- 4th order centered       ==>>   !!gm coding attempt   need to be tested
          ztu(:,:,jpk,:) = 0._wp             ! Bottom value : flux set to zero
          ztv(:,:,jpk,:) = 0._wp
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO SCHEDULE(RUNTIME)  
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )    ! 1st derivative (gradient)
          DO jn = 1, kjpt
             ztu(ji,jj,jk,jn) = ( pt(ji+1,jj  ,jk,jn,Kmm) - pt(ji,jj,jk,jn,Kmm) ) * umask(ji,jj,jk)
@@ -345,7 +345,7 @@ CONTAINS
          ENDIF
          !
          !extrae_event(30,1)
-	      !$OMP DO PRIVATE(zC2t_u, zC2t_v, zC4t_u, zC4t_v) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(zC2t_u, zC2t_v, zC4t_u, zC4t_v) SCHEDULE(RUNTIME)  
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )    ! Horizontal advective fluxes
          DO jn = 1, kjpt
             zC2t_u = pt(ji,jj,jk,jn,Kmm) + pt(ji+1,jj  ,jk,jn,Kmm)   ! 2 x C2 interpolation of T at u- & v-points (x2)
@@ -372,7 +372,7 @@ CONTAINS
       SELECT CASE( kn_fct_v )    !* vertical anti-diffusive fluxes (w-masked interior values)
       !
       CASE(  2  )                   !- 2nd order centered
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO SCHEDULE(RUNTIME)  
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )
          DO jn = 1, kjpt
             zwz(ji,jj,jk,jn) =  (  pW(ji,jj,jk) * 0.5_wp * ( pt(ji,jj,jk,jn,Kmm) + pt(ji,jj,jk-1,jn,Kmm) )   &
@@ -389,7 +389,7 @@ CONTAINS
          ENDDO
          !extrae_event(30,1)
 	      !$OMP END SINGLE
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO SCHEDULE(RUNTIME)  
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )
          DO jn = 1, kjpt
             zwz(ji,jj,jk,jn) = ( pW(ji,jj,jk) * ztw(ji,jj,jk,jn) - zwz(ji,jj,jk,jn) ) * wmask(ji,jj,jk)
@@ -415,7 +415,7 @@ CONTAINS
       !extrae_event(30,1)
       !
       IF ( ll_zAimp ) THEN
-	      !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME)  
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )    !* trend and after field with monotonic scheme
             !                                                ! total intermediate advective trends
          DO jn = 1, kjpt
@@ -435,7 +435,7 @@ CONTAINS
 	      !$OMP END SINGLE
          !
          !extrae_event(30,1)
-	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME)  
          DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
          DO jn = 1, kjpt
             zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) ) 
@@ -461,7 +461,7 @@ CONTAINS
       !
       !        !==  final trend with corrected fluxes  ==!
       !
-	   !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME) COLLAPSE(3)
+	   !$OMP DO PRIVATE(ztra) SCHEDULE(RUNTIME)  
       DO_3D( 0, 0, 0, 0, 1, jpkm1 )
       DO jn = 1, kjpt
          ztra = - (  zwx(ji,jj,jk,jn) - zwx(ji-1,jj  ,jk  ,jn )   &
@@ -476,7 +476,7 @@ CONTAINS
       IF ( ll_zAimp ) THEN
          !
          ztw(:,:,1,:) = 0._wp ; ztw(:,:,jpk,:) = 0._wp
-	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO PRIVATE(zfp_wk, zfm_wk) SCHEDULE(RUNTIME)  
          DO_3D( 0, 0, 0, 0, 2, jpkm1 )      ! Interior value ( multiplied by wmask)
          DO jn = 1, kjpt
             zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) ) 
@@ -486,7 +486,7 @@ CONTAINS
          ENDDO
          END_3D
 	      !$OMP END DO
-	      !$OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
+	      !$OMP DO SCHEDULE(RUNTIME)  
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
          DO jn = 1, kjpt
             pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztw(ji,jj,jk,jn) - ztw(ji  ,jj  ,jk+1, jn) ) &
