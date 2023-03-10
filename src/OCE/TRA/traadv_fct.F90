@@ -418,6 +418,7 @@ CONTAINS
          CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt )
          CALL SYSTEM_CLOCK(se3,crate,cmax)
          !extrae_event(30,1)
+         acc = acc + (ss1 - se1) + (ss2 - se2) + (ss3 - se3)
 	      !$OMP END SINGLE
          !
          !        !==  final trend with corrected fluxes  ==!
@@ -495,7 +496,6 @@ CONTAINS
             !$OMP END SINGLE
          ENDIF
          !
-         acc = acc + (ss1 - se1) + (ss2 - se2) + (ss3 - se3)
       END DO                     ! end of tracer loop
 	   !$OMP END PARALLEL
       CALL SYSTEM_CLOCK(pend,crate,cmax)
