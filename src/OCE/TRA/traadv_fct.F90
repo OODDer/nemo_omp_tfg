@@ -91,7 +91,6 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(nn_hls),jpk)        ::   zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
-      INTEGER, DIMENSION(1:3) :: myshape
       INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax, acc
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
       !!----------------------------------------------------------------------
@@ -160,12 +159,10 @@ CONTAINS
       CALL SYSTEM_CLOCK(pstart,crate,cmax)
       !
 
-	   !$OMP PARALLEL
-      jn = 1
       !PRIVATE(ztrdx, ztrdy, ztrdz, zptry, zwinf, zwdia, zwsup)
       !FIRSTPRIVATE()  
-      !$OMP DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj,zfp_wk, zfm_wk,ztra,zC2t_u, zC2t_v, zC4t_u, zC4t_v, ztw,ji, jj, jk, iii, jjj, zzz, myshape,zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv,ss1,ss2,se1,se2,ss3,se3,ztrdx, ztrdy, ztrdz, zptry, zwinf, zwdia, zwsup) 
-      DO jn = jn, kjpt            !==  loop over the tracers  ==!
+      !$OMP PARALLEL DO PRIVATE(zfp_ui, zfm_ui, zfp_vj, zfm_vj,zfp_wk, zfm_wk,ztra,zC2t_u, zC2t_v, zC4t_u, zC4t_v, ztw,ji, jj, jk, iii, jjj, zzz,zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv,ztrdx, ztrdy, ztrdz, zptry, zwinf, zwdia, zwsup) 
+      DO jn = 1, kjpt            !==  loop over the tracers  ==!
          !
          !        !==  upstream advection with initial mass fluxes & intermediate update  ==!
          !                    !* upstream tracer flux in the i and j direction
@@ -456,18 +453,9 @@ CONTAINS
          END IF
 	      !maybe change this sums into loops
          IF( l_trd .OR. l_hst ) THEN   ! trend diagnostics // heat/salt transport
-            myshape = SHAPE(ztrdx)
-	         !OMP DO SCHEDULE(RUNTIME) COLLAPSE(3)
-            DO iii = 1, myshape(1)
-               DO jjj = 1,myshape(2)
-                  DO zzz = 1, myshape(3)
-                     ztrdx(iii,jjj,zzz) = ztrdx(iii,jjj,zzz) + zwx(iii,jjj,zzz)  ! <<< add anti-diffusive fluxes
-                     ztrdy(iii,jjj,zzz) = ztrdy(iii,jjj,zzz) + zwy(iii,jjj,zzz)  !     to upstream fluxes
-                     ztrdz(iii,jjj,zzz) = ztrdz(iii,jjj,zzz) + zwz(iii,jjj,zzz)  !
-                  END DO
-               END DO
-            END DO
-	         !OMP END DO 
+            ztrdx(:,:,:) = ztrdx(:,:,:) + zwx(:,:,:)  ! <<< add anti-diffusive fluxes
+            ztrdy(:,:,:) = ztrdy(:,:,:) + zwy(:,:,:)  !     to upstream fluxes
+            ztrdz(:,:,:) = ztrdz(:,:,:) + zwz(:,:,:)  !
             !
             !extrae_event(30,0)
 	         !OMP SINGLE
@@ -482,25 +470,12 @@ CONTAINS
 	         !OMP END SINGLE
          ENDIF
          IF( l_ptr ) THEN              ! "Poleward" transports
-            !extrae_event(30,1)
-	         myshape = SHAPE(zptry)
-	         !OMP DO SCHEDULE(RUNTIME) COLLAPSE(3) 
-            DO iii = 1, myshape(1)
-               DO jjj = 1,myshape(2)
-                  DO zzz = 1, myshape(3)
-                     zptry(iii,jjj,zzz) = zptry(iii,jjj,zzz) + zwy(iii,jjj,zzz)  ! <<< add anti-diffusive fluxes
-                  END DO
-               END DO
-            END DO
-	         !OMP END DO
-            !extrae_event(30,0)
-            !OMP SINGLE
+            zptry(:,:,:) = zptry(:,:,:) + zwy(:,:,:)  ! <<< add anti-diffusive fluxes
             CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:) )
-            !OMP END SINGLE
          ENDIF
          !
       END DO                     ! end of tracer loop
-	   !$OMP END PARALLEL
+	   !$OMP END PARALLEL DO
       CALL SYSTEM_CLOCK(pend,crate,cmax)
       !
       IF ( ll_zAimp ) THEN
