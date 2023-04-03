@@ -89,7 +89,7 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(nn_hls),jpk)        ::   zwi, zwx, zwy, zwz, ztu, ztv, zltu, zltv, ztw
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
-      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax
+      INTEGER(8) :: cstart,cend,pstart,pend,ss1,ss2,se1,se2,ss3,se3, crate, cmax, ct3
       REAL(wp) :: sacc
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
       ss1=0 ; ss2=0 ; ss3 = 0; se1 = 0 ; se2 = 0 ; se3 = 0; sacc = (real (0))
@@ -334,9 +334,9 @@ CONTAINS
          !
          !        !==  monotonicity algorithm  ==!
          !
-         CALL SYSTEM_CLOCK(ss3,crate,cmax)
-         CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt )
-         CALL SYSTEM_CLOCK(se3,crate,cmax)
+         !CALL SYSTEM_CLOCK(ss3,crate,cmax)
+         CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt, ct3 )
+         !CALL SYSTEM_CLOCK(se3,crate,cmax)
          !
          !        !==  final trend with corrected fluxes  ==!
          !
@@ -381,7 +381,7 @@ CONTAINS
             CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:) )
          ENDIF
          !
-         sacc = sacc + (real( se1 - ss1 ) / real( crate )) + (real( se2 - ss2 ) / real( crate )) + (real( se3 - ss3 ) / real( crate ))
+         sacc = sacc + (real( se1 - ss1 ) / real( crate )) + (real( se2 - ss2 ) / real( crate )) + (real( ct3 ) / real( crate ))
       END DO                     ! end of tracer loop
       CALL SYSTEM_CLOCK(pend,crate,cmax)
       !
@@ -402,7 +402,7 @@ CONTAINS
    END SUBROUTINE tra_adv_fct
 
 
-   SUBROUTINE nonosc( Kmm, pbef, paa, pbb, pcc, paft, p2dt )
+   SUBROUTINE nonosc( Kmm, pbef, paa, pbb, pcc, paft, p2dt, calct )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE nonosc  ***
       !!
@@ -420,12 +420,14 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(in   ) ::   pbef            ! before field
       REAL(wp), DIMENSION(A2D(nn_hls)    ,jpk), INTENT(in   ) ::   paft            ! after field
       REAL(wp), DIMENSION(A2D(nn_hls)    ,jpk), INTENT(inout) ::   paa, pbb, pcc   ! monotonic fluxes in the 3 directions
+      INTEGER, INTENT(out) :: calct
       !
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
       INTEGER  ::   ikm1         ! local integer
       REAL(dp) ::   zpos, zneg, zbt, za, zb, zc, zbig, zrtrn    ! local scalars
       REAL(dp) ::   zau, zbu, zcu, zav, zbv, zcv, zup, zdo            !   -      -
       REAL(dp), DIMENSION(A2D(nn_hls),jpk) :: zbetup, zbetdo, zbup, zbdo
+      INTEGER(8) :: ncrate,ncmax, nss, ncs, nse, nce
       !!----------------------------------------------------------------------
       !
       zbig  = 1.e+40_dp
@@ -474,7 +476,10 @@ CONTAINS
             zbetdo(ji,jj,jk) = ( paft(ji,jj,jk) - zdo            ) / ( zneg + zrtrn ) * zbt
          END_2D
       END DO
+
+      CALL SYSTEM_CLOCK(ncs,ncrate,ncmax)
       IF (nn_hls==1) CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE. )   ! lateral boundary cond. (unchanged sign)
+      CALL SYSTEM_CLOCK(nce,ncrate,ncmax)
 
       ! 3. monotonic flux in the i & j direction (paa & pbb)
       ! ----------------------------------------
@@ -497,6 +502,7 @@ CONTAINS
          pcc(ji,jj,jk+1) = pcc(ji,jj,jk+1) * ( zc * za + ( 1._wp - zc) * zb )
       END_3D
       !
+      calct = (nce - ncs) 
    END SUBROUTINE nonosc
 
 
