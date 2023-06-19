@@ -4,7 +4,7 @@ This repository contains the code generated during the development of my TFG res
 
 The different parallel strategies correspond to the branches as follows:
 
-- loops strategy: main
+- loops strategy: loops
 - paralllel tracer loop strategy: Parallel_tradvfct_comms
 - nested stratedy: Reverse_No_Collapse
 
@@ -15,7 +15,7 @@ To compile and run the model for testing you can follow the guide at https://sit
 
 After downloading the base NEMO model code:
 
-1. copy the src directory contents in the same directory of the base code and let the new files overwrite the ones from the base model.
+1. copy this repository in the same directory where you downloaded the base model and let the new files overwrite the ones from the base model.
 
 2. proceed with the instructions at https://sites.nemo-ocean.io/user-guide/install.html#download-and-install-the-nemo-code to compile the code, be sure to add the OpenMP flag to your arch file before executing the compilation command (-qopenmp in our archfiles, but may vary depending on which OpenMP implementation you are using)
 
