@@ -15,9 +15,9 @@ To compile and run the model for testing you can follow the guide at https://sit
 
 After downloading the base NEMO model code:
 
-1. copy this repository in the same directory where you downloaded the base model and let the new files overwrite the ones from the base model.
+1. Clone this repository in the same directory where you downloaded the base model and let the new files overwrite the ones from the base model. (Note that the Parallel_tradvfct_comms branch has files that are not in the other branches, be sure to recover them from the original model when checking out from that branch)
 
-2. proceed with the instructions at https://sites.nemo-ocean.io/user-guide/install.html#download-and-install-the-nemo-code to compile the code, be sure to add the OpenMP flag to your arch file before executing the compilation command (-qopenmp in our archfiles, but may vary depending on which OpenMP implementation you are using)
+2. Continue with the instructions at https://sites.nemo-ocean.io/user-guide/install.html#download-and-install-the-nemo-code to compile the code, be sure to add the OpenMP flag to your arch file before executing the compilation command (-qopenmp in our archfiles, but may vary depending on which OpenMP implementation you are using)
 
 ## Running tests with the proofs of concept
 Once the compilation is completed, the steps to prepare and execute any test are the same as they would be for the base NEMO (https://sites.nemo-ocean.io/user-guide/install.html#preparing-an-experiment)
