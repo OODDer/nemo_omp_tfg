@@ -412,14 +412,12 @@ CONTAINS
          !        !==  monotonicity algorithm  ==!
          !
          !extrae_event(30,0)
-	      !$OMP SINGLE
          !HEREE
-         CALL SYSTEM_CLOCK(ss3,crate,cmax)
-         CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt )
-         CALL SYSTEM_CLOCK(se3,crate,cmax)
+         CALL nonosc( Kmm, pt(:,:,:,jn,Kbb), zwx, zwy, zwz, zwi, p2dt, se3 )
          !extrae_event(30,1)
-         acc = acc + (se1 - ss1) + (se2 - ss2) + (se3 - ss3)
-	      !$OMP END SINGLE
+         !$OMP SINGLE
+         acc = acc + (se1 - ss1) + (se2 - ss2) + (se3)
+	     !$OMP END SINGLE
          !
          !        !==  final trend with corrected fluxes  ==!
          !
@@ -516,7 +514,7 @@ CONTAINS
    END SUBROUTINE tra_adv_fct
 
 
-   SUBROUTINE nonosc( Kmm, pbef, paa, pbb, pcc, paft, p2dt )
+   SUBROUTINE nonosc( Kmm, pbef, paa, pbb, pcc, paft, p2dt, calct )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE nonosc  ***
       !!
@@ -534,21 +532,27 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(in   ) ::   pbef            ! before field
       REAL(wp), DIMENSION(A2D(nn_hls)    ,jpk), INTENT(in   ) ::   paft            ! after field
       REAL(wp), DIMENSION(A2D(nn_hls)    ,jpk), INTENT(inout) ::   paa, pbb, pcc   ! monotonic fluxes in the 3 directions
+      INTEGER(8), INTENT(out) :: calct
       !
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
       INTEGER  ::   ikm1         ! local integer
       REAL(dp) ::   zpos, zneg, zbt, za, zb, zc, zbig, zrtrn    ! local scalars
       REAL(dp) ::   zau, zbu, zcu, zav, zbv, zcv, zup, zdo            !   -      -
-      REAL(dp), DIMENSION(A2D(nn_hls),jpk) :: zbetup, zbetdo, zbup, zbdo
+      REAL(dp), DIMENSION(:,:,:), ALLOCATABLE, SAVE :: zbetup, zbetdo, zbup, zbdo
+      INTEGER(8) :: ncrate,ncmax, nss, ncs, nse, nce
       !!----------------------------------------------------------------------
       !
       zbig  = 1.e+40_dp
       zrtrn = 1.e-15_dp
+      !$OMP SINGLE
+       ALLOCATE( zbetup(A2D(nn_hls),jpk), zbetdo(A2D(nn_hls),jpk), zbup(A2D(nn_hls),jpk), zbdo(A2D(nn_hls),jpk) )
+      !$OMP END SINGLE
       zbetup(:,:,:) = 0._dp   ;   zbetdo(:,:,:) = 0._dp
 
       ! Search local extrema
       ! --------------------
       ! max/min of pbef & paft with large negative/positive value (-/+zbig) inside land
+      !$OMP DO
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
          zbup(ji,jj,jk) = MAX( pbef(ji,jj,jk) * tmask(ji,jj,jk) - zbig * ( 1._wp - tmask(ji,jj,jk) ),   &
             &                  paft(ji,jj,jk) * tmask(ji,jj,jk) - zbig * ( 1._wp - tmask(ji,jj,jk) )  )
@@ -558,6 +562,7 @@ CONTAINS
 
       DO jk = 1, jpkm1
          ikm1 = MAX(jk-1,1)
+         !$OMP DO
          DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
 
             ! search maximum in neighbourhood
@@ -588,10 +593,16 @@ CONTAINS
             zbetdo(ji,jj,jk) = ( paft(ji,jj,jk) - zdo            ) / ( zneg + zrtrn ) * zbt
          END_2D
       END DO
+      !$OMP SINGLE
+      CALL SYSTEM_CLOCK(ncs,ncrate,ncmax)
       IF (nn_hls==1) CALL lbc_lnk( 'traadv_fct', zbetup, 'T', 1.0_wp , zbetdo, 'T', 1.0_wp, ld4only= .TRUE. )   ! lateral boundary cond. (unchanged sign)
+      CALL SYSTEM_CLOCK(nce,ncrate,ncmax)
+      calct = (nce - ncs) 
+      !$OMP END SINGLE
 
       ! 3. monotonic flux in the i & j direction (paa & pbb)
       ! ----------------------------------------
+      !$OMP DO
       DO_3D( 1, 0, 1, 0, 1, jpkm1 )
          zau = MIN( 1._wp, zbetdo(ji,jj,jk), zbetup(ji+1,jj,jk) )
          zbu = MIN( 1._wp, zbetup(ji,jj,jk), zbetdo(ji+1,jj,jk) )
@@ -611,6 +622,10 @@ CONTAINS
          pcc(ji,jj,jk+1) = pcc(ji,jj,jk+1) * ( zc * za + ( 1._wp - zc) * zb )
       END_3D
       !
+      !$OMP SINGLE
+      DEALLOCATE(zbetup, zbetdo, zbup, zbdo)
+      !$OMP END SINGLE
+
    END SUBROUTINE nonosc
 
 
